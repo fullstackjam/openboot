@@ -83,7 +83,10 @@ detect_existing_clt() {
 # Check if running in interactive TTY
 # Returns 0 if interactive, 1 if not
 is_interactive() {
-    if [[ -t 0 ]]; then
+    # Check multiple conditions for interactivity
+    # 1. stdin is a terminal
+    # 2. /dev/tty is accessible (works even in curl | bash after exec </dev/tty)
+    if [[ -t 0 ]] || [[ -t 1 && -e /dev/tty ]]; then
         return 0
     else
         return 1
