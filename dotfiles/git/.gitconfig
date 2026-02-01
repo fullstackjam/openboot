@@ -1,0 +1,16 @@
+[user]
+	name = {{NAME}}
+	email = {{EMAIL}}
+
+[core]
+	editor = vim
+	autocrlf = input
+
+[init]
+	defaultBranch = main
+
+[pull]
+	rebase = true
+
+[push]
+	autoSetupRemote = true
