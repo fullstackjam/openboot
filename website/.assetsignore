@@ -1,7 +1,0 @@
-_worker.js
-wrangler.toml
-node_modules
-package.json
-package-lock.json
-.wrangler
-.assetsignore
