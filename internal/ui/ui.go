@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fullstackjam/openboot/internal/config"
+	"github.com/fullstackjam/openboot/internal/system"
 )
 
 var (
@@ -49,17 +50,28 @@ func Muted(text string) {
 }
 
 func InputGitConfig() (name, email string, err error) {
+	existingName, existingEmail := system.GetExistingGitConfig()
+
+	name = existingName
+	email = existingEmail
+
+	nameInput := huh.NewInput().
+		Title("Your name").
+		Value(&name)
+
+	emailInput := huh.NewInput().
+		Title("Your email").
+		Value(&email)
+
+	if existingName == "" {
+		nameInput.Placeholder("John Doe")
+	}
+	if existingEmail == "" {
+		emailInput.Placeholder("john@example.com")
+	}
+
 	form := huh.NewForm(
-		huh.NewGroup(
-			huh.NewInput().
-				Title("Your name").
-				Placeholder("John Doe").
-				Value(&name),
-			huh.NewInput().
-				Title("Your email").
-				Placeholder("john@example.com").
-				Value(&email),
-		),
+		huh.NewGroup(nameInput, emailInput),
 	)
 
 	err = form.Run()

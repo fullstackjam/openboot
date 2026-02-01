@@ -57,6 +57,20 @@ func InstallHomebrew() error {
 	return cmd.Run()
 }
 
+func GetGitConfig(key string) string {
+	output, err := RunCommandSilent("git", "config", "--global", key)
+	if err != nil {
+		return ""
+	}
+	return output
+}
+
+func GetExistingGitConfig() (name, email string) {
+	name = GetGitConfig("user.name")
+	email = GetGitConfig("user.email")
+	return
+}
+
 func ConfigureGit(name, email string) error {
 	if err := RunCommand("git", "config", "--global", "user.name", name); err != nil {
 		return fmt.Errorf("failed to set git name: %w", err)

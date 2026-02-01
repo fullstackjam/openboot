@@ -2,7 +2,10 @@ package macos
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 )
 
 type Preference struct {
@@ -45,25 +48,35 @@ var DefaultPreferences = []Preference{
 	{"com.apple.TimeMachine", "DoNotOfferNewDisksForBackup", "bool", "true", "Don't prompt for Time Machine on new disks"},
 }
 
+func expandHome(path string) string {
+	if strings.HasPrefix(path, "~/") {
+		home, _ := os.UserHomeDir()
+		return filepath.Join(home, path[2:])
+	}
+	return path
+}
+
 func Configure(prefs []Preference, dryRun bool) error {
 	for _, pref := range prefs {
+		value := expandHome(pref.Value)
+
 		if dryRun {
-			fmt.Printf("[DRY-RUN] Would set %s %s = %s (%s)\n", pref.Domain, pref.Key, pref.Value, pref.Desc)
+			fmt.Printf("[DRY-RUN] Would set %s %s = %s (%s)\n", pref.Domain, pref.Key, value, pref.Desc)
 			continue
 		}
 
 		args := []string{"write", pref.Domain, pref.Key}
 		switch pref.Type {
 		case "bool":
-			args = append(args, "-bool", pref.Value)
+			args = append(args, "-bool", value)
 		case "int":
-			args = append(args, "-int", pref.Value)
+			args = append(args, "-int", value)
 		case "float":
-			args = append(args, "-float", pref.Value)
+			args = append(args, "-float", value)
 		case "string":
-			args = append(args, "-string", pref.Value)
+			args = append(args, "-string", value)
 		default:
-			args = append(args, pref.Value)
+			args = append(args, value)
 		}
 
 		cmd := exec.Command("defaults", args...)
@@ -76,14 +89,15 @@ func Configure(prefs []Preference, dryRun bool) error {
 }
 
 func CreateScreenshotsDir(dryRun bool) error {
+	home, _ := os.UserHomeDir()
+	dir := filepath.Join(home, "Screenshots")
+
 	if dryRun {
-		fmt.Println("[DRY-RUN] Would create ~/Screenshots directory")
+		fmt.Printf("[DRY-RUN] Would create %s directory\n", dir)
 		return nil
 	}
 
-	cmd := exec.Command("mkdir", "-p", "$HOME/Screenshots")
-	cmd.Run()
-	return nil
+	return os.MkdirAll(dir, 0755)
 }
 
 func RestartAffectedApps(dryRun bool) error {
