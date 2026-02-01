@@ -586,91 +586,75 @@
             color: #60a5fa;
         }
         
-        /* Options Section - Redesigned */
-        .options-section {
+        /* FAQ Section */
+        .faq-section {
             margin-bottom: 80px;
         }
         
-        .options-container {
-            max-width: 900px;
+        .faq-container {
+            max-width: 700px;
             margin: 0 auto;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 24px;
         }
         
-        @media (max-width: 900px) {
-            .options-container {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        
-        @media (max-width: 600px) {
-            .options-container {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        .options-group {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 24px;
-        }
-        
-        .options-group-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
-            padding-bottom: 16px;
+        .faq-item {
             border-bottom: 1px solid var(--border);
         }
         
-        .options-group-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
+        .faq-question {
+            width: 100%;
+            padding: 20px 0;
+            background: none;
+            border: none;
+            text-align: left;
+            cursor: pointer;
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            font-size: 1.1rem;
-            background: rgba(255,255,255,0.05);
+            gap: 16px;
         }
         
-        .options-group-title {
-            font-size: 0.9rem;
-            font-weight: 600;
+        .faq-question span {
+            font-size: 1rem;
+            font-weight: 500;
             color: var(--text-primary);
-            letter-spacing: -0.01em;
         }
         
-        .option-item {
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-        
-        .option-item:last-child {
-            border-bottom: none;
-            padding-bottom: 0;
-        }
-        
-        .option-item:first-of-type {
-            padding-top: 0;
-        }
-        
-        .option-item code {
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--accent);
-            font-size: 0.8rem;
-            display: block;
-            margin-bottom: 4px;
-        }
-        
-        .option-item p {
+        .faq-question svg {
+            width: 20px;
+            height: 20px;
             color: var(--text-muted);
-            font-size: 0.8rem;
-            line-height: 1.4;
+            transition: transform 0.2s;
+            flex-shrink: 0;
+        }
+        
+        .faq-item.active .faq-question svg {
+            transform: rotate(45deg);
+        }
+        
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .faq-item.active .faq-answer {
+            max-height: 200px;
+        }
+        
+        .faq-answer p {
+            padding-bottom: 20px;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+        
+        .faq-answer code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: var(--accent);
         }
         
         /* Footer */
@@ -943,66 +927,55 @@
                 </div>
             </section>
             
-            <section class="options-section">
+            <section class="faq-section">
                 <div class="section-header">
-                    <h2 class="section-title">Command Options</h2>
-                    <p class="section-subtitle">Customize your installation with these flags</p>
+                    <h2 class="section-title">FAQ</h2>
+                    <p class="section-subtitle">Common questions about OpenBoot</p>
                 </div>
-                <div class="options-container">
-                    <div class="options-group">
-                        <div class="options-group-header">
-                            <div class="options-group-icon">🔧</div>
-                            <span class="options-group-title">Setup</span>
-                        </div>
-                        <div class="option-item">
-                            <code>--preset NAME</code>
-                            <p>Choose preset (minimal, standard, full, devops, frontend, data, mobile, ai)</p>
-                        </div>
-                        <div class="option-item">
-                            <code>--shell install</code>
-                            <p>Install Oh-My-Zsh with plugins</p>
-                        </div>
-                        <div class="option-item">
-                            <code>--macos configure</code>
-                            <p>Configure macOS developer preferences</p>
+                <div class="faq-container">
+                    <div class="faq-item">
+                        <button class="faq-question" onclick="toggleFaq(this)">
+                            <span>What systems are supported?</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        </button>
+                        <div class="faq-answer">
+                            <p>OpenBoot supports macOS 12.0 (Monterey) and later, on both Apple Silicon (M1/M2/M3) and Intel Macs. It automatically detects your architecture and installs the correct packages.</p>
                         </div>
                     </div>
-                    
-                    <div class="options-group">
-                        <div class="options-group-header">
-                            <div class="options-group-icon">🔄</div>
-                            <span class="options-group-title">Maintenance</span>
-                        </div>
-                        <div class="option-item">
-                            <code>--update</code>
-                            <p>Update Homebrew and all packages</p>
-                        </div>
-                        <div class="option-item">
-                            <code>--rollback</code>
-                            <p>Restore backed up files</p>
-                        </div>
-                        <div class="option-item">
-                            <code>--resume</code>
-                            <p>Continue interrupted installation</p>
+                    <div class="faq-item">
+                        <button class="faq-question" onclick="toggleFaq(this)">
+                            <span>Is it safe to run scripts from the internet?</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        </button>
+                        <div class="faq-answer">
+                            <p>OpenBoot is 100% open source. You can inspect the code on GitHub before running. We also support <code>--dry-run</code> to preview exactly what will be installed without making changes.</p>
                         </div>
                     </div>
-                    
-                    <div class="options-group">
-                        <div class="options-group-header">
-                            <div class="options-group-icon">⚙️</div>
-                            <span class="options-group-title">Mode</span>
+                    <div class="faq-item">
+                        <button class="faq-question" onclick="toggleFaq(this)">
+                            <span>Can I customize what gets installed?</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Yes! Choose from 8 presets tailored for different workflows, or use the interactive mode to customize packages. You can also edit <code>lib/packages.sh</code> to create your own preset.</p>
                         </div>
-                        <div class="option-item">
-                            <code>--silent</code>
-                            <p>Non-interactive for CI/automation</p>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-question" onclick="toggleFaq(this)">
+                            <span>How do I undo changes or uninstall?</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        </button>
+                        <div class="faq-answer">
+                            <p>OpenBoot automatically backs up your files before making changes. Run <code>./install.sh --rollback</code> to restore them. Packages can be removed with <code>brew uninstall</code>.</p>
                         </div>
-                        <div class="option-item">
-                            <code>--dry-run</code>
-                            <p>Preview without installing</p>
-                        </div>
-                        <div class="option-item">
-                            <code>--help</code>
-                            <p>Show all available options</p>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-question" onclick="toggleFaq(this)">
+                            <span>Does it collect any data?</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        </button>
+                        <div class="faq-answer">
+                            <p>No. OpenBoot has zero analytics, zero telemetry, and zero network calls except for downloading packages from official sources. Everything runs locally on your machine.</p>
                         </div>
                     </div>
                 </div>
@@ -1056,6 +1029,11 @@
                 });
             });
         });
+        
+        function toggleFaq(button) {
+            const item = button.parentElement;
+            item.classList.toggle('active');
+        }
     </script>
 </body>
 </html>
