@@ -21,6 +21,7 @@ source "$SCRIPT_DIR/lib/core/rollback.sh"
 source "$SCRIPT_DIR/lib/ui/gum.sh"
 source "$SCRIPT_DIR/lib/packages.sh"
 source "$SCRIPT_DIR/lib/brew.sh"
+source "$SCRIPT_DIR/lib/shell.sh"
 
 # Flags
 PRESET=""
@@ -29,6 +30,7 @@ DOTFILES_MODE=""
 DRY_RUN=false
 RESUME=false
 ROLLBACK=false
+SHELL_FRAMEWORK=""
 
 # Selected packages (for customization)
 SELECTED_CLI=()
@@ -46,15 +48,17 @@ OPTIONS:
     --preset NAME   Set preset (minimal, standard, full)
     --silent        Non-interactive mode (requires env vars)
     --dotfiles MODE Set dotfiles mode (clone, link, skip)
+    --shell MODE    Set shell framework (install, skip)
     --dry-run       Show what would be installed without installing
     --resume        Resume from last incomplete step
     --rollback      Restore backed up files to their original state
 
 ENVIRONMENT VARIABLES (for --silent mode):
-    OPENBOOT_GIT_NAME   Git user name (required in silent mode)
-    OPENBOOT_GIT_EMAIL  Git user email (required in silent mode)
-    OPENBOOT_PRESET     Default preset if --preset not specified
-    OPENBOOT_DOTFILES   Dotfiles repository URL
+    OPENBOOT_GIT_NAME         Git user name (required in silent mode)
+    OPENBOOT_GIT_EMAIL        Git user email (required in silent mode)
+    OPENBOOT_PRESET           Default preset if --preset not specified
+    OPENBOOT_DOTFILES         Dotfiles repository URL
+    OPENBOOT_SHELL_FRAMEWORK  Shell framework (install, skip)
 
 EXAMPLES:
     ./install.sh                          # Interactive installation
@@ -96,6 +100,14 @@ parse_args() {
                     exit 1
                 fi
                 DOTFILES_MODE="$2"
+                shift 2
+                ;;
+            --shell)
+                if [[ -z "${2:-}" ]]; then
+                    echo "Error: --shell requires a value" >&2
+                    exit 1
+                fi
+                SHELL_FRAMEWORK="$2"
                 shift 2
                 ;;
             --dry-run)
@@ -291,7 +303,39 @@ step_dotfiles_selection() {
     echo ""
 }
 
-# Step 5: Confirmation and installation
+step_shell_framework() {
+    if $RESUME && progress_is_complete "shell_framework"; then
+        echo "Shell framework setup already complete, skipping..."
+        return 0
+    fi
+    
+    progress_start "shell_framework"
+    ui_header "Step 5: Shell Framework (Optional)"
+    echo ""
+    
+    if [[ -n "$SHELL_FRAMEWORK" ]]; then
+        if shell_is_omz_installed && [[ "$SHELL_FRAMEWORK" == "install" ]]; then
+            echo "Oh-My-Zsh is already installed"
+            SHELL_FRAMEWORK="skip"
+        else
+            echo "Shell framework: $SHELL_FRAMEWORK"
+        fi
+    elif shell_is_omz_installed; then
+        echo "Oh-My-Zsh is already installed"
+        SHELL_FRAMEWORK="skip"
+    elif $SILENT; then
+        SHELL_FRAMEWORK="${OPENBOOT_SHELL_FRAMEWORK:-skip}"
+        echo "Shell framework: $SHELL_FRAMEWORK"
+    else
+        echo "Oh-My-Zsh enhances your terminal with themes and plugins."
+        echo ""
+        SHELL_FRAMEWORK=$(ui_choose "Install Oh-My-Zsh?" "skip" "install")
+    fi
+    
+    progress_complete "shell_framework"
+    echo ""
+}
+
 step_confirmation_and_install() {
     if $RESUME && progress_is_complete "installation"; then
         echo "Installation already complete!"
@@ -299,14 +343,15 @@ step_confirmation_and_install() {
     fi
     
     progress_start "installation"
-    ui_header "Step 5: Confirmation"
+    ui_header "Step 6: Confirmation"
     echo ""
     
     echo "Installation Summary:"
-    echo "  Preset:     $PRESET"
-    echo "  CLI tools:  ${#SELECTED_CLI[@]} packages"
-    echo "  GUI apps:   ${#SELECTED_CASK[@]} applications"
-    echo "  Dotfiles:   $DOTFILES_MODE"
+    echo "  Preset:       $PRESET"
+    echo "  CLI tools:    ${#SELECTED_CLI[@]} packages"
+    echo "  GUI apps:     ${#SELECTED_CASK[@]} applications"
+    echo "  Dotfiles:     $DOTFILES_MODE"
+    echo "  Oh-My-Zsh:    $SHELL_FRAMEWORK"
     echo ""
     
     if $DRY_RUN; then
@@ -318,11 +363,15 @@ step_confirmation_and_install() {
         echo "GUI applications:"
         printf "  brew install --cask %s\n" "${SELECTED_CASK[@]}"
         echo ""
+        if [[ "$SHELL_FRAMEWORK" == "install" ]]; then
+            echo "Shell framework:"
+            echo "  Oh-My-Zsh + plugins (zsh-autosuggestions, zsh-syntax-highlighting, etc.)"
+            echo ""
+        fi
         progress_complete "installation"
         return 0
     fi
     
-    # Confirmation in interactive mode
     if ! $SILENT; then
         if ! ui_confirm "Proceed with installation?" true; then
             echo "Installation cancelled by user"
@@ -334,17 +383,21 @@ step_confirmation_and_install() {
     ui_header "Installing packages..."
     echo ""
     
-    # Install CLI packages
     if [[ ${#SELECTED_CLI[@]} -gt 0 ]]; then
         echo "Installing CLI packages..."
         brew_install_packages "${SELECTED_CLI[@]}"
         echo ""
     fi
     
-    # Install cask applications
     if [[ ${#SELECTED_CASK[@]} -gt 0 ]]; then
         echo "Installing GUI applications..."
         brew_install_casks "${SELECTED_CASK[@]}"
+        echo ""
+    fi
+    
+    if [[ "$SHELL_FRAMEWORK" == "install" ]]; then
+        echo "Setting up Oh-My-Zsh..."
+        shell_setup_omz
         echo ""
     fi
     
@@ -362,6 +415,7 @@ show_completion() {
     echo "  - Git configured with your identity"
     echo "  - ${#SELECTED_CLI[@]} CLI packages"
     echo "  - ${#SELECTED_CASK[@]} GUI applications"
+    [[ "$SHELL_FRAMEWORK" == "install" ]] && echo "  - Oh-My-Zsh with plugins"
     echo ""
     echo "Next steps:"
     echo "  - Restart your terminal to apply shell changes"
@@ -405,6 +459,7 @@ main() {
     step_preset_selection
     step_package_customization
     step_dotfiles_selection
+    step_shell_framework
     step_confirmation_and_install
     
     show_completion
