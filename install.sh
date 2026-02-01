@@ -17,6 +17,7 @@ VERSION="0.1.0"
 source "$SCRIPT_DIR/lib/core/detect.sh"
 source "$SCRIPT_DIR/lib/core/error.sh"
 source "$SCRIPT_DIR/lib/core/progress.sh"
+source "$SCRIPT_DIR/lib/core/rollback.sh"
 source "$SCRIPT_DIR/lib/ui/gum.sh"
 source "$SCRIPT_DIR/lib/packages.sh"
 source "$SCRIPT_DIR/lib/brew.sh"
@@ -27,6 +28,7 @@ SILENT=false
 DOTFILES_MODE=""
 DRY_RUN=false
 RESUME=false
+ROLLBACK=false
 
 # Selected packages (for customization)
 SELECTED_CLI=()
@@ -46,6 +48,7 @@ OPTIONS:
     --dotfiles MODE Set dotfiles mode (clone, link, skip)
     --dry-run       Show what would be installed without installing
     --resume        Resume from last incomplete step
+    --rollback      Restore backed up files to their original state
 
 ENVIRONMENT VARIABLES (for --silent mode):
     OPENBOOT_GIT_NAME   Git user name (required in silent mode)
@@ -58,6 +61,7 @@ EXAMPLES:
     ./install.sh --preset standard        # Skip preset selection
     ./install.sh --dry-run                # Preview installation
     ./install.sh --resume                 # Resume interrupted install
+    ./install.sh --rollback               # Restore original files
     
     # Silent mode
     OPENBOOT_GIT_NAME="John" OPENBOOT_GIT_EMAIL="john@example.com" \\
@@ -100,6 +104,10 @@ parse_args() {
                 ;;
             --resume)
                 RESUME=true
+                shift
+                ;;
+            --rollback)
+                ROLLBACK=true
                 shift
                 ;;
             *)
@@ -363,12 +371,20 @@ show_completion() {
     echo ""
 }
 
-# Main function
 main() {
     parse_args "$@"
+    
+    if $ROLLBACK; then
+        ui_header "OpenBoot Rollback"
+        echo ""
+        rollback_status
+        echo ""
+        rollback_interactive
+        exit $?
+    fi
+    
     validate_silent_mode
     
-    # Initialize error handling and progress tracking
     error_init
     progress_init
     
@@ -385,7 +401,6 @@ main() {
         echo ""
     fi
     
-    # Execute 5-step flow
     step_git_config
     step_preset_selection
     step_package_customization
