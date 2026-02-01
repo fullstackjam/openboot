@@ -52,6 +52,7 @@ curl -fsSL openboot.dev/install | bash -s -- --preset minimal --silent
 - `--dotfiles MODE`: Set dotfiles mode (`clone`, `link`, `skip`)
 - `--dry-run`: Show what would be installed without installing
 - `--resume`: Resume from last incomplete step
+- `--rollback`: Restore backed up files to their original state
 
 ## Environment Variables
 
@@ -59,6 +60,16 @@ curl -fsSL openboot.dev/install | bash -s -- --preset minimal --silent
 - `OPENBOOT_GIT_EMAIL`: Git user email (required in silent mode)
 - `OPENBOOT_PRESET`: Default preset if `--preset` not specified
 - `OPENBOOT_DOTFILES`: Dotfiles repository URL
+
+## Rollback
+
+If something goes wrong, OpenBoot automatically backs up your original files before making changes. To restore:
+
+```bash
+./install.sh --rollback
+```
+
+Backups are stored in `~/.openboot/backup/` with timestamps. The rollback command will show available backups and let you choose which to restore.
 
 ## Troubleshooting
 
