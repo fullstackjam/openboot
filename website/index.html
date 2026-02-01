@@ -714,13 +714,13 @@
                 <p class="subtitle">Bootstrap your Mac in minutes. Install Homebrew, CLI tools, GUI apps, dotfiles, and Oh-My-Zsh with a single command.</p>
                 
                 <div class="features-grid">
-                    <div class="feature-item">Interactive TUI with gum</div>
+                    <div class="feature-item">Beautiful interactive TUI</div>
                     <div class="feature-item">Apple Silicon & Intel support</div>
                     <div class="feature-item">8 specialized presets</div>
-                    <div class="feature-item">Oh-My-Zsh + plugins</div>
+                    <div class="feature-item">Oh-My-Zsh + shell aliases</div>
                     <div class="feature-item">Dotfiles management</div>
-                    <div class="feature-item">Safe rollback support</div>
-                    <div class="feature-item">Resume interrupted installs</div>
+                    <div class="feature-item">macOS preferences tuning</div>
+                    <div class="feature-item">Dry-run mode for preview</div>
                     <div class="feature-item">100% open source</div>
                 </div>
                 
@@ -749,7 +749,7 @@
                 <div class="terminal-body">
                     <div><span class="prompt">$</span> <span class="command">curl -fsSL https://openboot.dev/install | bash</span></div>
                     <div class="output"></div>
-                    <div class="output">=== <span class="highlight">OpenBoot Installer v0.1.0</span> ===</div>
+                    <div class="output">=== <span class="highlight">OpenBoot Installer v0.3.0</span> ===</div>
                     <div class="output"></div>
                     <div class="output">=== Step 1: Git Configuration ===</div>
                     <div class="output">? Enter your name: <span class="highlight">John Doe</span></div>
@@ -957,7 +957,7 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                         </button>
                         <div class="faq-answer">
-                            <p>Yes! Choose from 8 presets tailored for different workflows, or use the interactive mode to customize packages. You can also edit <code>lib/packages.sh</code> to create your own preset.</p>
+                            <p>Yes! Choose from 8 presets tailored for different workflows. Use <code>--preset minimal</code> for a lightweight setup, or <code>--preset full</code> for everything. Run with <code>--dry-run</code> to preview first.</p>
                         </div>
                     </div>
                     <div class="faq-item">
@@ -966,7 +966,7 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                         </button>
                         <div class="faq-answer">
-                            <p>OpenBoot automatically backs up your files before making changes. Run <code>./install.sh --rollback</code> to restore them. Packages can be removed with <code>brew uninstall</code>.</p>
+                            <p>OpenBoot backs up existing dotfiles before making changes. Packages can be removed individually with <code>brew uninstall package-name</code> or in bulk with <code>brew list | xargs brew uninstall</code>.</p>
                         </div>
                     </div>
                     <div class="faq-item">
