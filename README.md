@@ -38,21 +38,26 @@ curl -fsSL openboot.dev/install | bash -s -- --preset minimal --silent
 
 ## Presets
 
-| Preset | CLI Tools | GUI Apps | Time |
-|--------|-----------|----------|------|
-| **Minimal** | curl, wget, jq, tree, htop, watch, gh, stow, ssh-copy-id, rsync | Warp, Maccy, Scroll Reverser | ~5 min |
-| **Standard** | + node, tmux | + VS Code, Chrome, OrbStack, Postman, Typora | ~15 min |
-| **Full** | + kubectl, helm, argocd, awscli, wireguard-tools, wrk, telnet, zola | + Feishu, WeChat, Telegram, Notion, MS Office, MS Edge, Netease Music, BetterDisplay, BalenaEtcher, Clash Verge | ~30 min |
+| Preset | Focus | CLI Tools | GUI Apps |
+|--------|-------|-----------|----------|
+| **minimal** | Essential | curl, wget, jq, tree, htop, gh, stow | Warp, Maccy |
+| **standard** | Development | + node, tmux | + VS Code, Chrome, OrbStack |
+| **full** | Comprehensive | + kubectl, helm, awscli, zola | + Notion, MS Office, Telegram |
+| **devops** | Infrastructure | kubectl, helm, terraform, k9s, awscli | VS Code, OrbStack, Lens |
+| **frontend** | Web Dev | node, yarn, pnpm, bun | VS Code, Chrome, Firefox, Figma |
+| **data** | Data Science | python, pipx, uv, postgresql | VS Code, DBeaver |
 
 ## Options
 
 - `--help`: Show help message
-- `--preset NAME`: Set preset (`minimal`, `standard`, `full`)
+- `--preset NAME`: Set preset (minimal, standard, full, devops, frontend, data)
 - `--silent`: Non-interactive mode (requires env vars)
-- `--dotfiles MODE`: Set dotfiles mode (`clone`, `link`, `skip`)
+- `--shell MODE`: Install shell framework (install, skip)
+- `--dotfiles MODE`: Set dotfiles mode (clone, link, skip)
 - `--dry-run`: Show what would be installed without installing
 - `--resume`: Resume from last incomplete step
 - `--rollback`: Restore backed up files to their original state
+- `--update`: Update Homebrew and upgrade all packages
 
 ## Environment Variables
 

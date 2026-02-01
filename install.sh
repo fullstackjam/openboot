@@ -46,7 +46,7 @@ Usage: ./install.sh [OPTIONS]
 
 OPTIONS:
     --help          Show this help message
-    --preset NAME   Set preset (minimal, standard, full)
+    --preset NAME   Set preset (minimal, standard, full, devops, frontend, data)
     --silent        Non-interactive mode (requires env vars)
     --dotfiles MODE Set dotfiles mode (clone, link, skip)
     --shell MODE    Set shell framework (install, skip)
@@ -215,12 +215,12 @@ step_preset_selection() {
         echo "  Full     - Everything including office & communication apps"
         echo ""
         
-        PRESET=$(ui_choose "Select preset:" "minimal" "standard" "full")
+        PRESET=$(ui_choose "Select preset:" "minimal" "standard" "full" "devops" "frontend" "data")
     fi
     
     # Validate preset
-    if [[ ! "$PRESET" =~ ^(minimal|standard|full)$ ]]; then
-        echo "Error: Invalid preset '$PRESET'. Must be: minimal, standard, or full" >&2
+    if [[ ! "$PRESET" =~ ^(minimal|standard|full|devops|frontend|data)$ ]]; then
+        echo "Error: Invalid preset '$PRESET'. Must be: minimal, standard, full, devops, frontend, or data" >&2
         return 1
     fi
     

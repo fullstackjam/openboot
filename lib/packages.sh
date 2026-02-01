@@ -77,22 +77,81 @@ FULL_CASK=(
 )
 
 # ============================================================================
+# DEVOPS PRESET - Kubernetes, cloud, infrastructure
+# ============================================================================
+
+DEVOPS_CLI=(
+  "${MINIMAL_CLI[@]}"
+  "kubectl"
+  "helm"
+  "argocd"
+  "k9s"
+  "terraform"
+  "awscli"
+  "azure-cli"
+  "kubectx"
+  "stern"
+  "kustomize"
+)
+
+DEVOPS_CASK=(
+  "${MINIMAL_CASK[@]}"
+  "visual-studio-code"
+  "orbstack"
+  "lens"
+)
+
+# ============================================================================
+# FRONTEND PRESET - Web development focused
+# ============================================================================
+
+FRONTEND_CLI=(
+  "${MINIMAL_CLI[@]}"
+  "node"
+  "yarn"
+  "pnpm"
+  "bun"
+)
+
+FRONTEND_CASK=(
+  "${MINIMAL_CASK[@]}"
+  "visual-studio-code"
+  "google-chrome"
+  "firefox"
+  "figma"
+  "arc"
+)
+
+# ============================================================================
+# DATA PRESET - Data science and analytics
+# ============================================================================
+
+DATA_CLI=(
+  "${MINIMAL_CLI[@]}"
+  "python"
+  "pipx"
+  "uv"
+  "postgresql"
+  "sqlite"
+)
+
+DATA_CASK=(
+  "${MINIMAL_CASK[@]}"
+  "visual-studio-code"
+  "dbeaver-community"
+  "db-browser-for-sqlite"
+)
+
+# ============================================================================
 # Helper Functions
 # ============================================================================
 
-# get_packages - Returns package list for a given preset and type
-# Usage: get_packages "minimal" "cli"
-# Args:
-#   $1: preset name (minimal, standard, full)
-#   $2: type (cli or cask)
-# Returns: space-separated list of packages
 get_packages() {
     local preset="$1"
     local type="$2"
     
-    # Validate inputs
-    if [[ ! "$preset" =~ ^(minimal|standard|full)$ ]]; then
-        echo "Error: Invalid preset '$preset'. Must be: minimal, standard, or full" >&2
+    if [[ ! "$preset" =~ ^(minimal|standard|full|devops|frontend|data)$ ]]; then
+        echo "Error: Invalid preset '$preset'" >&2
         return 1
     fi
     
@@ -101,17 +160,12 @@ get_packages() {
         return 1
     fi
     
-    # Convert to uppercase for array name
     local array_name
     array_name=$(echo "${preset}_${type}" | tr '[:lower:]' '[:upper:]')
     
-    # Use eval to access the appropriate array
     eval "echo \"\${${array_name}[@]}\""
 }
 
-# get_all_presets - Returns all available preset names
-# Usage: get_all_presets
-# Returns: space-separated list of preset names
 get_all_presets() {
-    echo "minimal standard full"
+    echo "minimal standard full devops frontend data"
 }
