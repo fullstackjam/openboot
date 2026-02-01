@@ -8,6 +8,9 @@ A minimal, stow-compatible dotfiles template for quick system setup.
 dotfiles/
 ├── git/
 │   └── .gitconfig       # Git configuration with user placeholders
+├── ssh/
+│   └── .ssh/
+│       └── config       # SSH client configuration
 ├── zsh/
 │   ├── .zprofile        # Shell initialization (Homebrew PATH setup)
 │   └── .zshrc           # Interactive shell configuration
@@ -25,13 +28,15 @@ dotfiles/
 
 Deploy all modules:
 ```bash
-stow -v -d dotfiles -t ~ git zsh
+mkdir -p ~/.ssh/sockets  # Required for SSH multiplexing
+stow -v -d dotfiles -t ~ git zsh ssh
 ```
 
 Deploy specific modules:
 ```bash
 stow -v -d dotfiles -t ~ git    # Git config only
 stow -v -d dotfiles -t ~ zsh    # Zsh config only
+stow -v -d dotfiles -t ~ ssh    # SSH config only
 ```
 
 ### Customize
@@ -41,6 +46,7 @@ Before deploying, edit the files to customize:
 1. **`.gitconfig`** - Replace `{{NAME}}` and `{{EMAIL}}` with your details
 2. **`.zshrc`** - Add aliases, functions, or environment variables as needed
 3. **`.zprofile`** - Add additional PATH setup if required
+4. **`.ssh/config`** - Add custom host entries for your servers
 
 ## What's Included
 
@@ -48,6 +54,12 @@ Before deploying, edit the files to customize:
 - User name and email (placeholders: `{{NAME}}`, `{{EMAIL}}`)
 - Sensible defaults: vim editor, main as default branch, rebase on pull
 - Auto-setup remote tracking on push
+
+### SSH Configuration
+- Keep-alive connections (ServerAliveInterval 30)
+- SSH multiplexing for faster subsequent connections
+- macOS Keychain integration for passphrases
+- GitHub/GitLab port 443 configs (bypass firewalls blocking port 22)
 
 ### Zsh Configuration
 - **`.zprofile`** - Runs on login shells, sets up Homebrew PATH for both arm64 and x86_64
@@ -68,7 +80,7 @@ Before deploying, edit the files to customize:
 
 To remove symlinks created by stow:
 ```bash
-stow -D -v -d dotfiles -t ~ git zsh
+stow -D -v -d dotfiles -t ~ git zsh ssh
 ```
 
 ## Notes

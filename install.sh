@@ -22,6 +22,7 @@ source "$SCRIPT_DIR/lib/ui/gum.sh"
 source "$SCRIPT_DIR/lib/packages.sh"
 source "$SCRIPT_DIR/lib/brew.sh"
 source "$SCRIPT_DIR/lib/shell.sh"
+source "$SCRIPT_DIR/lib/macos.sh"
 
 # Flags
 PRESET=""
@@ -32,6 +33,7 @@ RESUME=false
 ROLLBACK=false
 SHELL_FRAMEWORK=""
 UPDATE=false
+MACOS_CONFIG=""
 
 # Selected packages (for customization)
 SELECTED_CLI=()
@@ -50,6 +52,7 @@ OPTIONS:
     --silent        Non-interactive mode (requires env vars)
     --dotfiles MODE Set dotfiles mode (clone, link, skip)
     --shell MODE    Set shell framework (install, skip)
+    --macos MODE    Configure macOS preferences (configure, skip)
     --dry-run       Show what would be installed without installing
     --resume        Resume from last incomplete step
     --rollback      Restore backed up files to their original state
@@ -110,6 +113,14 @@ parse_args() {
                     exit 1
                 fi
                 SHELL_FRAMEWORK="$2"
+                shift 2
+                ;;
+            --macos)
+                if [[ -z "${2:-}" ]]; then
+                    echo "Error: --macos requires a value" >&2
+                    exit 1
+                fi
+                MACOS_CONFIG="$2"
                 shift 2
                 ;;
             --dry-run)
@@ -348,6 +359,43 @@ step_shell_framework() {
     echo ""
 }
 
+step_macos_config() {
+    if $RESUME && progress_is_complete "macos_config"; then
+        echo "macOS configuration already complete, skipping..."
+        return 0
+    fi
+    
+    progress_start "macos_config"
+    ui_header "Step 6: macOS Configuration (Optional)"
+    echo ""
+    
+    if ! macos_is_supported; then
+        echo "Skipping macOS configuration (not on macOS)"
+        MACOS_CONFIG="skip"
+        progress_complete "macos_config"
+        return 0
+    fi
+    
+    if [[ -n "$MACOS_CONFIG" ]]; then
+        echo "macOS configuration: $MACOS_CONFIG"
+    elif $SILENT; then
+        MACOS_CONFIG="${OPENBOOT_MACOS_CONFIG:-skip}"
+        echo "macOS configuration: $MACOS_CONFIG"
+    else
+        echo "Configure macOS with developer-friendly defaults:"
+        echo "  - Dock: hide recent apps, optimal size"
+        echo "  - Trackpad: tap-to-click, three-finger drag"
+        echo "  - Finder: show extensions, hidden files, path bar"
+        echo "  - Keyboard: fast repeat, no auto-correct"
+        echo "  - Login items: auto-start Maccy, Raycast, etc."
+        echo ""
+        MACOS_CONFIG=$(ui_choose "Apply macOS preferences?" "skip" "configure")
+    fi
+    
+    progress_complete "macos_config"
+    echo ""
+}
+
 step_confirmation_and_install() {
     if $RESUME && progress_is_complete "installation"; then
         echo "Installation already complete!"
@@ -355,7 +403,7 @@ step_confirmation_and_install() {
     fi
     
     progress_start "installation"
-    ui_header "Step 6: Confirmation"
+    ui_header "Step 7: Confirmation"
     echo ""
     
     echo "Installation Summary:"
@@ -364,6 +412,7 @@ step_confirmation_and_install() {
     echo "  GUI apps:     ${#SELECTED_CASK[@]} applications"
     echo "  Dotfiles:     $DOTFILES_MODE"
     echo "  Oh-My-Zsh:    $SHELL_FRAMEWORK"
+    echo "  macOS config: $MACOS_CONFIG"
     echo ""
     
     if $DRY_RUN; then
@@ -379,6 +428,12 @@ step_confirmation_and_install() {
             echo "Shell framework:"
             echo "  Oh-My-Zsh + plugins (zsh-autosuggestions, zsh-syntax-highlighting, etc.)"
             echo ""
+        fi
+        if [[ "$MACOS_CONFIG" == "configure" ]]; then
+            echo "macOS configuration:"
+            echo "  Dock, Trackpad, Finder, Keyboard preferences"
+            echo ""
+            macos_configure_all true
         fi
         progress_complete "installation"
         return 0
@@ -413,6 +468,12 @@ step_confirmation_and_install() {
         echo ""
     fi
     
+    if [[ "$MACOS_CONFIG" == "configure" ]]; then
+        macos_configure_all false
+        macos_setup_dock false
+        echo ""
+    fi
+    
     progress_complete "installation"
 }
 
@@ -428,6 +489,7 @@ show_completion() {
     echo "  - ${#SELECTED_CLI[@]} CLI packages"
     echo "  - ${#SELECTED_CASK[@]} GUI applications"
     [[ "$SHELL_FRAMEWORK" == "install" ]] && echo "  - Oh-My-Zsh with plugins"
+    [[ "$MACOS_CONFIG" == "configure" ]] && echo "  - macOS developer preferences"
     echo ""
     echo "Next steps:"
     echo "  - Restart your terminal to apply shell changes"
@@ -541,6 +603,7 @@ main() {
     step_package_customization
     step_dotfiles_selection
     step_shell_framework
+    step_macos_config
     step_confirmation_and_install
     
     show_completion
