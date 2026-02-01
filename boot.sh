@@ -3,7 +3,7 @@ set -euo pipefail
 
 VERSION="0.1.0"
 DRY_RUN=false
-OPENBOOT_INSTALL_URL="${OPENBOOT_INSTALL_URL:-https://raw.githubusercontent.com/openboot-dev/openboot/main/install.sh}"
+OPENBOOT_INSTALL_URL="${OPENBOOT_INSTALL_URL:-https://raw.githubusercontent.com/fullstackjam/openboot/main/install.sh}"
 
 # -----------------------------------------------------------------------------
 # Help & Usage
