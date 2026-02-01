@@ -9,83 +9,20 @@ on:
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
-env:
-  PROJECT_NAME: openboot
-  CUSTOM_DOMAIN: openboot.dev
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       deployments: write
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Wrangler
-        run: npm install -g wrangler
-
-      - name: Create Pages Project (if not exists)
-        continue-on-error: true
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          wrangler pages project create $PROJECT_NAME --production-branch=main 2>/dev/null || echo "Project already exists"
-
       - name: Deploy to Cloudflare Pages
-        id: deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          wrangler pages deploy website --project-name=$PROJECT_NAME --branch=main
-
-      - name: Configure Custom Domain
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-        run: |
-          # Add domain to Pages project
-          EXISTING=$(curl -s -X GET \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJECT_NAME/domains" \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            -H "Content-Type: application/json" | jq -r '.result[].name' | grep -x "$CUSTOM_DOMAIN" || true)
-          
-          if [ -z "$EXISTING" ]; then
-            echo "Adding custom domain to Pages: $CUSTOM_DOMAIN"
-            curl -s -X POST \
-              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJECT_NAME/domains" \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-              -H "Content-Type: application/json" \
-              --data "{\"name\":\"$CUSTOM_DOMAIN\"}"
-          else
-            echo "Custom domain $CUSTOM_DOMAIN already in Pages"
-          fi
-          
-          # Create DNS CNAME record if zone ID provided
-          if [ -n "$CLOUDFLARE_ZONE_ID" ]; then
-            DNS_EXISTS=$(curl -s -X GET \
-              "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/dns_records?name=$CUSTOM_DOMAIN" \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-              -H "Content-Type: application/json" | jq -r '.result | length')
-            
-            if [ "$DNS_EXISTS" = "0" ]; then
-              echo "Creating DNS CNAME record for $CUSTOM_DOMAIN"
-              curl -s -X POST \
-                "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/dns_records" \
-                -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-                -H "Content-Type: application/json" \
-                --data "{\"type\":\"CNAME\",\"name\":\"@\",\"content\":\"$PROJECT_NAME.pages.dev\",\"proxied\":true}"
-            else
-              echo "DNS record for $CUSTOM_DOMAIN already exists"
-            fi
-          fi
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy website --project-name=openboot --branch=main

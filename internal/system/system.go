@@ -66,3 +66,12 @@ func ConfigureGit(name, email string) error {
 	}
 	return nil
 }
+
+func HasTTY() bool {
+	f, err := os.Open("/dev/tty")
+	if err != nil {
+		return false
+	}
+	f.Close()
+	return true
+}

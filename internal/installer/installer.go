@@ -54,7 +54,17 @@ func stepGitConfig(cfg *config.Config) error {
 
 	var name, email string
 
-	if cfg.Silent {
+	// In dry-run mode without TTY, use placeholder values
+	if cfg.DryRun && !system.HasTTY() {
+		name = cfg.GitName
+		email = cfg.GitEmail
+		if name == "" {
+			name = "Your Name"
+		}
+		if email == "" {
+			email = "you@example.com"
+		}
+	} else if cfg.Silent {
 		name = cfg.GitName
 		email = cfg.GitEmail
 		if name == "" || email == "" {
@@ -90,7 +100,7 @@ func stepPresetSelection(cfg *config.Config) error {
 	fmt.Println()
 
 	if cfg.Preset == "" {
-		if cfg.Silent {
+		if cfg.Silent || (cfg.DryRun && !system.HasTTY()) {
 			cfg.Preset = "minimal"
 		} else {
 			var err error
