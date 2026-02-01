@@ -31,6 +31,11 @@ __pycache__/
 # Work tracking (internal)
 .sisyphus/
 
+# Go binaries (root level only)
+/openboot
+/openboot-*
+*.exe
+
 # Temporary files
 *.tmp
 *.temp

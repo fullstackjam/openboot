@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v0.2.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: darwin
+            arch: amd64
+          - os: darwin
+            arch: arm64
+          - os: linux
+            arch: amd64
+          - os: linux
+            arch: arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: '0'
+        run: |
+          go build -ldflags="-s -w" -o openboot-${{ matrix.os }}-${{ matrix.arch }} ./cmd/openboot
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openboot-${{ matrix.os }}-${{ matrix.arch }}
+          path: openboot-${{ matrix.os }}-${{ matrix.arch }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Get version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: OpenBoot ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/openboot-darwin-amd64/openboot-darwin-amd64
+            artifacts/openboot-darwin-arm64/openboot-darwin-arm64
+            artifacts/openboot-linux-amd64/openboot-linux-amd64
+            artifacts/openboot-linux-arm64/openboot-linux-arm64
+          body: |
+            ## Installation
+
+            ```bash
+            curl -fsSL https://openboot.dev/install | bash
+            ```
+
+            ## Binaries
+
+            | Platform | Architecture | Download |
+            |----------|--------------|----------|
+            | macOS | Apple Silicon (M1/M2/M3) | `openboot-darwin-arm64` |
+            | macOS | Intel | `openboot-darwin-amd64` |
+            | Linux | x86_64 | `openboot-linux-amd64` |
+            | Linux | ARM64 | `openboot-linux-arm64` |
