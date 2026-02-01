@@ -53,6 +53,12 @@
         
         html {
             overflow-x: hidden;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        
+        html::-webkit-scrollbar {
+            display: none;
         }
         
         body {
@@ -253,32 +259,24 @@
             margin: 0 auto;
         }
         
+        /* Bento Grid Layout */
         .presets-container {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(12, 1fr);
+            grid-template-rows: auto;
             gap: 16px;
-        }
-        
-        @media (max-width: 1024px) {
-            .presets-container {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        
-        @media (max-width: 600px) {
-            .presets-container {
-                grid-template-columns: 1fr;
-            }
         }
         
         .preset-card {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 24px;
-            transition: all 0.25s ease;
+            border-radius: 20px;
+            padding: 28px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
+            cursor: pointer;
+            grid-column: span 3;
         }
         
         .preset-card::before {
@@ -293,30 +291,175 @@
             transition: opacity 0.25s ease;
         }
         
+        .preset-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 120%, var(--preset-color, var(--accent)), transparent 70%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
+        
         .preset-card:hover {
-            border-color: var(--border-hover);
-            transform: translateY(-4px);
-            box-shadow: 0 12px 40px -12px rgba(0,0,0,0.5);
+            border-color: var(--preset-color, var(--border-hover));
+            transform: translateY(-6px) scale(1.01);
+            box-shadow: 
+                0 20px 40px -15px rgba(0,0,0,0.6),
+                0 0 0 1px rgba(255,255,255,0.05) inset;
         }
         
         .preset-card:hover::before {
             opacity: 1;
         }
         
+        .preset-card:hover::after {
+            opacity: 0.08;
+        }
+        
+        .preset-card:active {
+            transform: translateY(-2px) scale(0.99);
+            transition: all 0.1s ease;
+        }
+        
+        /* Featured card - Standard (spans 7 columns) */
         .preset-card.featured {
-            grid-column: span 2;
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(34, 197, 94, 0.05) 100%);
-            border-color: rgba(34, 197, 94, 0.3);
+            grid-column: span 7;
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(34, 197, 94, 0.06) 100%);
+            border-color: rgba(34, 197, 94, 0.35);
+            padding: 32px;
         }
         
         .preset-card.featured::before {
             opacity: 1;
             background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+            height: 4px;
         }
         
-        @media (max-width: 600px) {
+        .preset-card.featured .preset-icon {
+            width: 56px;
+            height: 56px;
+            font-size: 1.75rem;
+        }
+        
+        .preset-card.featured h3 {
+            font-size: 1.25rem;
+        }
+        
+        .preset-card.featured p {
+            font-size: 0.95rem;
+        }
+        
+        /* Secondary prominent - Minimal (spans 5 columns) */
+        .preset-card.secondary {
+            grid-column: span 5;
+        }
+        
+        /* Medium cards (spans 4 columns) */
+        .preset-card.medium {
+            grid-column: span 4;
+        }
+        
+        /* Command preview tooltip */
+        .preset-card .command-preview {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 12px 20px;
+            background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.8) 100%);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--accent);
+            opacity: 0;
+            transform: translateY(100%);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 0 0 20px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            backdrop-filter: blur(8px);
+        }
+        
+        .preset-card .command-preview .hint {
+            color: var(--text-muted);
+            font-size: 0.65rem;
+            white-space: nowrap;
+        }
+        
+        .preset-card:hover .command-preview {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Copied state */
+        .preset-card.copied {
+            border-color: var(--accent) !important;
+        }
+        
+        .preset-card.copied .command-preview {
+            background: linear-gradient(to top, rgba(34, 197, 94, 0.2) 0%, rgba(34, 197, 94, 0.1) 100%);
+        }
+        
+        .preset-card.copied .command-preview::after {
+            content: '✓ Copied!';
+            color: var(--accent);
+            font-weight: 600;
+        }
+        
+        .preset-card.copied .command-preview .cmd,
+        .preset-card.copied .command-preview .hint {
+            display: none;
+        }
+        
+        /* Responsive - Tablet */
+        @media (max-width: 1024px) {
+            .presets-container {
+                grid-template-columns: repeat(6, 1fr);
+            }
+            
             .preset-card.featured {
+                grid-column: span 6;
+            }
+            
+            .preset-card.secondary {
+                grid-column: span 3;
+            }
+            
+            .preset-card.medium {
+                grid-column: span 3;
+            }
+            
+            .preset-card {
+                grid-column: span 3;
+            }
+        }
+        
+        /* Responsive - Mobile */
+        @media (max-width: 600px) {
+            .presets-container {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            
+            .preset-card,
+            .preset-card.featured,
+            .preset-card.secondary,
+            .preset-card.medium {
                 grid-column: span 1;
+                padding: 20px;
+            }
+            
+            .preset-card.featured .preset-icon {
+                width: 48px;
+                height: 48px;
+                font-size: 1.5rem;
+            }
+            
+            .preset-card .command-preview {
+                font-size: 0.6rem;
+                padding: 10px 16px;
             }
         }
         
@@ -646,7 +789,7 @@
                     <p class="section-subtitle">Curated tool collections for every developer workflow</p>
                 </div>
                 <div class="presets-container">
-                    <div class="preset-card featured" style="--preset-color: var(--preset-standard);">
+                    <div class="preset-card featured" data-preset="standard" style="--preset-color: var(--preset-standard);">
                         <div class="preset-icon">⚡</div>
                         <div class="preset-header">
                             <h3>standard <span class="badge">Popular</span></h3>
@@ -660,9 +803,13 @@
                             <span>Chrome</span>
                             <span>OrbStack</span>
                         </div>
+                        <div class="command-preview">
+                            <span class="cmd">curl ... | bash -s -- --preset standard</span>
+                            <span class="hint">Click to copy</span>
+                        </div>
                     </div>
                     
-                    <div class="preset-card" style="--preset-color: var(--preset-minimal);">
+                    <div class="preset-card secondary" data-preset="minimal" style="--preset-color: var(--preset-minimal);">
                         <div class="preset-icon">🎯</div>
                         <div class="preset-header">
                             <h3>minimal</h3>
@@ -676,23 +823,13 @@
                             <span>gh</span>
                             <span>lazygit</span>
                         </div>
-                    </div>
-                    
-                    <div class="preset-card" style="--preset-color: var(--preset-full);">
-                        <div class="preset-icon">🌟</div>
-                        <div class="preset-header">
-                            <h3>full</h3>
-                        </div>
-                        <p>Everything included. Complete productivity suite.</p>
-                        <div class="preset-tools">
-                            <span>All standard +</span>
-                            <span>Notion</span>
-                            <span>Slack</span>
-                            <span>Obsidian</span>
+                        <div class="command-preview">
+                            <span class="cmd">curl ... | bash -s -- --preset minimal</span>
+                            <span class="hint">Click to copy</span>
                         </div>
                     </div>
                     
-                    <div class="preset-card" style="--preset-color: var(--preset-devops);">
+                    <div class="preset-card medium" data-preset="devops" style="--preset-color: var(--preset-devops);">
                         <div class="preset-icon">☁️</div>
                         <div class="preset-header">
                             <h3>devops</h3>
@@ -705,9 +842,13 @@
                             <span>k9s</span>
                             <span>awscli</span>
                         </div>
+                        <div class="command-preview">
+                            <span class="cmd">curl ... | bash -s -- --preset devops</span>
+                            <span class="hint">Click to copy</span>
+                        </div>
                     </div>
                     
-                    <div class="preset-card" style="--preset-color: var(--preset-frontend);">
+                    <div class="preset-card medium" data-preset="frontend" style="--preset-color: var(--preset-frontend);">
                         <div class="preset-icon">🎨</div>
                         <div class="preset-header">
                             <h3>frontend</h3>
@@ -720,9 +861,13 @@
                             <span>Figma</span>
                             <span>Arc</span>
                         </div>
+                        <div class="command-preview">
+                            <span class="cmd">curl ... | bash -s -- --preset frontend</span>
+                            <span class="hint">Click to copy</span>
+                        </div>
                     </div>
                     
-                    <div class="preset-card" style="--preset-color: var(--preset-data);">
+                    <div class="preset-card medium" data-preset="data" style="--preset-color: var(--preset-data);">
                         <div class="preset-icon">📊</div>
                         <div class="preset-header">
                             <h3>data</h3>
@@ -735,9 +880,31 @@
                             <span>postgresql</span>
                             <span>DBeaver</span>
                         </div>
+                        <div class="command-preview">
+                            <span class="cmd">curl ... | bash -s -- --preset data</span>
+                            <span class="hint">Click to copy</span>
+                        </div>
                     </div>
                     
-                    <div class="preset-card" style="--preset-color: var(--preset-mobile);">
+                    <div class="preset-card medium" data-preset="full" style="--preset-color: var(--preset-full);">
+                        <div class="preset-icon">🌟</div>
+                        <div class="preset-header">
+                            <h3>full</h3>
+                        </div>
+                        <p>Everything included. Complete productivity suite.</p>
+                        <div class="preset-tools">
+                            <span>All standard +</span>
+                            <span>Notion</span>
+                            <span>Slack</span>
+                            <span>Obsidian</span>
+                        </div>
+                        <div class="command-preview">
+                            <span class="cmd">curl ... | bash -s -- --preset full</span>
+                            <span class="hint">Click to copy</span>
+                        </div>
+                    </div>
+                    
+                    <div class="preset-card medium" data-preset="mobile" style="--preset-color: var(--preset-mobile);">
                         <div class="preset-icon">📱</div>
                         <div class="preset-header">
                             <h3>mobile <span class="badge new">New</span></h3>
@@ -748,11 +915,14 @@
                             <span>fastlane</span>
                             <span>scrcpy</span>
                             <span>Android Studio</span>
-                            <span>Figma</span>
+                        </div>
+                        <div class="command-preview">
+                            <span class="cmd">curl ... | bash -s -- --preset mobile</span>
+                            <span class="hint">Click to copy</span>
                         </div>
                     </div>
                     
-                    <div class="preset-card" style="--preset-color: var(--preset-ai);">
+                    <div class="preset-card medium" data-preset="ai" style="--preset-color: var(--preset-ai);">
                         <div class="preset-icon">🤖</div>
                         <div class="preset-header">
                             <h3>ai <span class="badge new">New</span></h3>
@@ -764,6 +934,10 @@
                             <span>python</span>
                             <span>Cursor</span>
                             <span>LM Studio</span>
+                        </div>
+                        <div class="command-preview">
+                            <span class="cmd">curl ... | bash -s -- --preset ai</span>
+                            <span class="hint">Click to copy</span>
                         </div>
                     </div>
                 </div>
@@ -867,6 +1041,21 @@
                 }, 2000);
             });
         }
+        
+        document.querySelectorAll('.preset-card').forEach(card => {
+            card.addEventListener('click', function() {
+                const presetName = this.dataset.preset;
+                const command = `curl -fsSL openboot.dev/install | bash -s -- --preset ${presetName}`;
+                
+                navigator.clipboard.writeText(command).then(() => {
+                    this.classList.add('copied');
+                    
+                    setTimeout(() => {
+                        this.classList.remove('copied');
+                    }, 2000);
+                });
+            });
+        });
     </script>
 </body>
 </html>
