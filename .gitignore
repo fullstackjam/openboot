@@ -1,0 +1,37 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OpenBoot runtime
+~/.openboot/
+
+# Logs
+*.log
+logs/
+
+# Node (if adding build tools later)
+node_modules/
+npm-debug.log*
+
+# Python (if adding scripts later)
+__pycache__/
+*.py[cod]
+.env
+.venv/
+
+# Work tracking (internal)
+.sisyphus/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
