@@ -52,6 +52,57 @@ func InstallCask(packages []string, dryRun bool) error {
 	return cmd.Run()
 }
 
+func InstallWithProgress(cliPkgs, caskPkgs []string, dryRun bool) error {
+	total := len(cliPkgs) + len(caskPkgs)
+	if total == 0 {
+		return nil
+	}
+
+	if dryRun {
+		ui.Info("Would install packages:")
+		for _, p := range cliPkgs {
+			fmt.Printf("    brew install %s\n", p)
+		}
+		for _, p := range caskPkgs {
+			fmt.Printf("    brew install --cask %s\n", p)
+		}
+		return nil
+	}
+
+	progress := ui.NewProgressTracker(total)
+	var failed []string
+
+	for _, pkg := range cliPkgs {
+		progress.SetCurrent(pkg)
+		cmd := exec.Command("brew", "install", pkg)
+		cmd.Stdout = nil
+		cmd.Stderr = nil
+		if err := cmd.Run(); err != nil {
+			failed = append(failed, pkg)
+		}
+		progress.Complete(pkg)
+	}
+
+	for _, pkg := range caskPkgs {
+		progress.SetCurrent(pkg)
+		cmd := exec.Command("brew", "install", "--cask", pkg)
+		cmd.Stdout = nil
+		cmd.Stderr = nil
+		if err := cmd.Run(); err != nil {
+			failed = append(failed, pkg)
+		}
+		progress.Complete(pkg)
+	}
+
+	progress.Finish()
+
+	if len(failed) > 0 {
+		ui.Muted(fmt.Sprintf("Note: %d packages failed to install: %v", len(failed), failed))
+	}
+
+	return nil
+}
+
 func Update(dryRun bool) error {
 	if dryRun {
 		ui.Info("Would run: brew update && brew upgrade")

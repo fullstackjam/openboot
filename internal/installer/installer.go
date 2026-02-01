@@ -43,7 +43,11 @@ func runInstall(cfg *config.Config) error {
 		return err
 	}
 
-	if err := stepConfirmAndInstall(cfg); err != nil {
+	if err := stepPackageCustomization(cfg); err != nil {
+		return err
+	}
+
+	if err := stepInstallPackages(cfg); err != nil {
 		return err
 	}
 
@@ -139,35 +143,80 @@ func stepPresetSelection(cfg *config.Config) error {
 	return nil
 }
 
-func stepConfirmAndInstall(cfg *config.Config) error {
-	preset, _ := config.GetPreset(cfg.Preset)
-
-	ui.Header("Step 3: Installation")
+func stepPackageCustomization(cfg *config.Config) error {
+	ui.Header("Step 3: Package Selection")
 	fmt.Println()
 
-	if !cfg.Silent && !cfg.DryRun {
-		proceed, err := ui.Confirm("Proceed with installation?", true)
-		if err != nil {
-			return err
+	if cfg.Silent || (cfg.DryRun && !system.HasTTY()) {
+		cfg.SelectedPkgs = config.GetPackagesForPreset(cfg.Preset)
+		total := len(cfg.SelectedPkgs)
+		ui.Info(fmt.Sprintf("Using preset packages: %d selected", total))
+		fmt.Println()
+		return nil
+	}
+
+	ui.Info("Customize your packages (based on preset: " + cfg.Preset + ")")
+	ui.Muted("Use Tab to switch categories, Space to toggle, Enter to confirm")
+	fmt.Println()
+
+	selected, confirmed, err := ui.RunSelector(cfg.Preset)
+	if err != nil {
+		return err
+	}
+
+	if !confirmed {
+		ui.Muted("Installation cancelled.")
+		os.Exit(0)
+	}
+
+	cfg.SelectedPkgs = selected
+
+	count := 0
+	for _, v := range selected {
+		if v {
+			count++
 		}
-		if !proceed {
-			ui.Muted("Installation cancelled.")
-			os.Exit(0)
+	}
+	ui.Success(fmt.Sprintf("Selected %d packages", count))
+	fmt.Println()
+	return nil
+}
+
+func stepInstallPackages(cfg *config.Config) error {
+	ui.Header("Step 4: Installation")
+	fmt.Println()
+
+	var cliPkgs, caskPkgs []string
+
+	for _, cat := range config.Categories {
+		for _, pkg := range cat.Packages {
+			if cfg.SelectedPkgs[pkg.Name] {
+				if pkg.IsCask {
+					caskPkgs = append(caskPkgs, pkg.Name)
+				} else {
+					cliPkgs = append(cliPkgs, pkg.Name)
+				}
+			}
 		}
 	}
 
-	fmt.Println()
-
-	if err := brew.Install(preset.CLI, cfg.DryRun); err != nil {
-		ui.Error(fmt.Sprintf("Failed to install CLI packages: %v", err))
+	total := len(cliPkgs) + len(caskPkgs)
+	if total == 0 {
+		ui.Muted("No packages selected")
+		return nil
 	}
 
+	ui.Info(fmt.Sprintf("Installing %d packages (%d CLI, %d GUI)...", total, len(cliPkgs), len(caskPkgs)))
 	fmt.Println()
 
-	if err := brew.InstallCask(preset.Cask, cfg.DryRun); err != nil {
-		ui.Error(fmt.Sprintf("Failed to install GUI applications: %v", err))
+	if err := brew.InstallWithProgress(cliPkgs, caskPkgs, cfg.DryRun); err != nil {
+		ui.Error(fmt.Sprintf("Some packages failed: %v", err))
 	}
 
+	if !cfg.DryRun {
+		ui.Success("Package installation complete")
+	}
+	fmt.Println()
 	return nil
 }
 
@@ -176,7 +225,7 @@ func stepDotfiles(cfg *config.Config) error {
 		return nil
 	}
 
-	ui.Header("Step 4: Dotfiles")
+	ui.Header("Step 5: Dotfiles")
 	fmt.Println()
 
 	dotfilesURL := dotfiles.GetDotfilesURL()
@@ -228,7 +277,7 @@ func stepShell(cfg *config.Config) error {
 		return nil
 	}
 
-	ui.Header("Step 5: Shell Configuration")
+	ui.Header("Step 6: Shell Configuration")
 	fmt.Println()
 
 	if cfg.Shell == "" {
@@ -277,7 +326,7 @@ func stepMacOS(cfg *config.Config) error {
 		return nil
 	}
 
-	ui.Header("Step 6: macOS Preferences")
+	ui.Header("Step 7: macOS Preferences")
 	fmt.Println()
 
 	if cfg.Macos == "" {
@@ -317,7 +366,18 @@ func stepMacOS(cfg *config.Config) error {
 }
 
 func showCompletion(cfg *config.Config) {
-	preset, _ := config.GetPreset(cfg.Preset)
+	var cliCount, caskCount int
+	for _, cat := range config.Categories {
+		for _, pkg := range cat.Packages {
+			if cfg.SelectedPkgs[pkg.Name] {
+				if pkg.IsCask {
+					caskCount++
+				} else {
+					cliCount++
+				}
+			}
+		}
+	}
 
 	fmt.Println()
 	ui.Header("Installation Complete!")
@@ -327,9 +387,9 @@ func showCompletion(cfg *config.Config) {
 	fmt.Println()
 
 	ui.Info("What was installed:")
-	ui.Info(fmt.Sprintf("  - Git configured with your identity"))
-	ui.Info(fmt.Sprintf("  - %d CLI packages", len(preset.CLI)))
-	ui.Info(fmt.Sprintf("  - %d GUI applications", len(preset.Cask)))
+	ui.Info("  - Git configured with your identity")
+	ui.Info(fmt.Sprintf("  - %d CLI packages", cliCount))
+	ui.Info(fmt.Sprintf("  - %d GUI applications", caskCount))
 	fmt.Println()
 
 	ui.Info("Next steps:")

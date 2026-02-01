@@ -1,17 +1,18 @@
 package config
 
 type Config struct {
-	Preset   string
-	Silent   bool
-	DryRun   bool
-	Update   bool
-	Rollback bool
-	Resume   bool
-	Shell    string
-	Macos    string
-	Dotfiles string
-	GitName  string
-	GitEmail string
+	Preset       string
+	Silent       bool
+	DryRun       bool
+	Update       bool
+	Rollback     bool
+	Resume       bool
+	Shell        string
+	Macos        string
+	Dotfiles     string
+	GitName      string
+	GitEmail     string
+	SelectedPkgs map[string]bool
 }
 
 type Preset struct {
