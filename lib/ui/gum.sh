@@ -21,7 +21,7 @@ ui_input() {
     
     # Check if interactive and gum is available
     if is_interactive && command -v gum &>/dev/null; then
-        gum input --placeholder "$placeholder" --value "$default" --prompt "$prompt "
+        gum input --placeholder "$placeholder" --value "$default" --prompt "$prompt " < /dev/tty
     else
         # Non-interactive: use default or fail
         if [[ -n "$default" ]]; then
@@ -42,7 +42,7 @@ ui_choose() {
     
     # Check if interactive and gum is available
     if is_interactive && command -v gum &>/dev/null; then
-        gum choose "${options[@]}" --header "$header"
+        gum choose "${options[@]}" --header "$header" < /dev/tty
     else
         # Non-interactive: return first option
         if [[ ${#options[@]} -gt 0 ]]; then
@@ -62,7 +62,7 @@ ui_confirm() {
     
     # Check if interactive and gum is available
     if is_interactive && command -v gum &>/dev/null; then
-        gum confirm "$question"
+        gum confirm "$question" < /dev/tty
     else
         # Non-interactive: use default
         if [[ "$default" == "true" ]]; then
