@@ -19,7 +19,7 @@
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
         :root {
@@ -31,8 +31,18 @@
             --text-muted: #666666;
             --accent: #22c55e;
             --accent-hover: #16a34a;
+            --accent-glow: rgba(34, 197, 94, 0.15);
             --border: #2a2a2a;
+            --border-hover: #3a3a3a;
             --code-bg: #1e1e1e;
+            --preset-minimal: #94a3b8;
+            --preset-standard: #22c55e;
+            --preset-full: #f59e0b;
+            --preset-devops: #3b82f6;
+            --preset-frontend: #ec4899;
+            --preset-data: #8b5cf6;
+            --preset-mobile: #06b6d4;
+            --preset-ai: #f97316;
         }
         
         * {
@@ -41,12 +51,17 @@
             box-sizing: border-box;
         }
         
+        html {
+            overflow-x: hidden;
+        }
+        
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
             line-height: 1.6;
             min-height: 100vh;
+            overflow-x: hidden;
         }
         
         .container {
@@ -214,57 +229,146 @@
             margin-bottom: 60px;
         }
         
+        /* Presets Section - Redesigned */
         .presets-section {
             margin-bottom: 80px;
         }
         
-        .section-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 24px;
+        .section-header {
             text-align: center;
+            margin-bottom: 40px;
         }
         
-        .presets-grid {
+        .section-title {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            letter-spacing: -0.02em;
+        }
+        
+        .section-subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .presets-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+        
+        @media (max-width: 1024px) {
+            .presets-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .presets-container {
+                grid-template-columns: 1fr;
+            }
         }
         
         .preset-card {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: 16px;
             padding: 24px;
-            transition: all 0.2s;
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .preset-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--preset-color, var(--accent));
+            opacity: 0;
+            transition: opacity 0.25s ease;
         }
         
         .preset-card:hover {
-            border-color: var(--accent);
-            transform: translateY(-2px);
+            border-color: var(--border-hover);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px -12px rgba(0,0,0,0.5);
+        }
+        
+        .preset-card:hover::before {
+            opacity: 1;
+        }
+        
+        .preset-card.featured {
+            grid-column: span 2;
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(34, 197, 94, 0.05) 100%);
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+        
+        .preset-card.featured::before {
+            opacity: 1;
+            background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+        }
+        
+        @media (max-width: 600px) {
+            .preset-card.featured {
+                grid-column: span 1;
+            }
+        }
+        
+        .preset-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        
+        .preset-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 12px;
         }
         
         .preset-card h3 {
-            font-size: 1.125rem;
-            margin-bottom: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            letter-spacing: -0.01em;
         }
         
         .preset-card .badge {
-            font-size: 0.7rem;
-            padding: 2px 8px;
+            font-size: 0.65rem;
+            padding: 3px 8px;
             background: var(--accent);
             color: #000;
-            border-radius: 4px;
-            font-weight: 500;
+            border-radius: 20px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        
+        .preset-card .badge.new {
+            background: var(--preset-ai);
         }
         
         .preset-card p {
             color: var(--text-secondary);
-            font-size: 0.9rem;
+            font-size: 0.875rem;
             margin-bottom: 16px;
+            line-height: 1.5;
         }
         
         .preset-tools {
@@ -275,13 +379,20 @@
         
         .preset-tools span {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            padding: 4px 8px;
-            background: var(--bg-tertiary);
-            border-radius: 4px;
+            font-size: 0.7rem;
+            padding: 4px 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 6px;
             color: var(--text-secondary);
+            transition: all 0.2s;
         }
         
+        .preset-card:hover .preset-tools span {
+            border-color: rgba(255,255,255,0.12);
+        }
+        
+        /* Terminal Preview */
         .terminal-preview {
             background: var(--code-bg);
             border: 1px solid var(--border);
@@ -332,6 +443,94 @@
             color: #60a5fa;
         }
         
+        /* Options Section - Redesigned */
+        .options-section {
+            margin-bottom: 80px;
+        }
+        
+        .options-container {
+            max-width: 900px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+        
+        @media (max-width: 900px) {
+            .options-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .options-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .options-group {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+        }
+        
+        .options-group-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .options-group-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            background: rgba(255,255,255,0.05);
+        }
+        
+        .options-group-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+        
+        .option-item {
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .option-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        
+        .option-item:first-of-type {
+            padding-top: 0;
+        }
+        
+        .option-item code {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent);
+            font-size: 0.8rem;
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        .option-item p {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+        
+        /* Footer */
         footer {
             border-top: 1px solid var(--border);
             padding: 40px 0;
@@ -369,37 +568,6 @@
             color: var(--text-muted);
             font-size: 0.85rem;
         }
-        
-        .options-section {
-            margin-bottom: 80px;
-        }
-        
-        .options-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 16px;
-            max-width: 900px;
-            margin: 0 auto;
-        }
-        
-        .option-item {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 16px;
-        }
-        
-        .option-item code {
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--accent);
-            font-size: 0.85rem;
-        }
-        
-        .option-item p {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            margin-top: 6px;
-        }
     </style>
 </head>
 <body>
@@ -421,7 +589,7 @@
                 <div class="features-grid">
                     <div class="feature-item">Interactive TUI with gum</div>
                     <div class="feature-item">Apple Silicon & Intel support</div>
-                    <div class="feature-item">6 specialized presets</div>
+                    <div class="feature-item">8 specialized presets</div>
                     <div class="feature-item">Oh-My-Zsh + plugins</div>
                     <div class="feature-item">Dotfiles management</div>
                     <div class="feature-item">Safe rollback support</div>
@@ -473,35 +641,63 @@
             </section>
             
             <section class="presets-section">
-                <h2 class="section-title">Presets</h2>
-                <div class="presets-grid">
-                    <div class="preset-card">
-                        <h3>minimal</h3>
-                        <p>Essential tools for any developer</p>
-                        <div class="preset-tools">
-                            <span>curl</span>
-                            <span>wget</span>
-                            <span>jq</span>
-                            <span>tree</span>
-                            <span>htop</span>
-                            <span>gh</span>
-                            <span>stow</span>
+                <div class="section-header">
+                    <h2 class="section-title">Choose Your Profile</h2>
+                    <p class="section-subtitle">Curated tool collections for every developer workflow</p>
+                </div>
+                <div class="presets-container">
+                    <div class="preset-card featured" style="--preset-color: var(--preset-standard);">
+                        <div class="preset-icon">⚡</div>
+                        <div class="preset-header">
+                            <h3>standard <span class="badge">Popular</span></h3>
                         </div>
-                    </div>
-                    <div class="preset-card">
-                        <h3>standard <span class="badge">Popular</span></h3>
-                        <p>General development environment</p>
+                        <p>Complete development environment with modern tooling. Perfect starting point for most developers.</p>
                         <div class="preset-tools">
                             <span>node</span>
                             <span>tmux</span>
+                            <span>neovim</span>
                             <span>VS Code</span>
                             <span>Chrome</span>
                             <span>OrbStack</span>
                         </div>
                     </div>
-                    <div class="preset-card">
-                        <h3>devops</h3>
-                        <p>Kubernetes & cloud infrastructure</p>
+                    
+                    <div class="preset-card" style="--preset-color: var(--preset-minimal);">
+                        <div class="preset-icon">🎯</div>
+                        <div class="preset-header">
+                            <h3>minimal</h3>
+                        </div>
+                        <p>Essential CLI tools for any developer. Lightweight and fast.</p>
+                        <div class="preset-tools">
+                            <span>ripgrep</span>
+                            <span>fd</span>
+                            <span>bat</span>
+                            <span>fzf</span>
+                            <span>gh</span>
+                            <span>lazygit</span>
+                        </div>
+                    </div>
+                    
+                    <div class="preset-card" style="--preset-color: var(--preset-full);">
+                        <div class="preset-icon">🌟</div>
+                        <div class="preset-header">
+                            <h3>full</h3>
+                        </div>
+                        <p>Everything included. Complete productivity suite.</p>
+                        <div class="preset-tools">
+                            <span>All standard +</span>
+                            <span>Notion</span>
+                            <span>Slack</span>
+                            <span>Obsidian</span>
+                        </div>
+                    </div>
+                    
+                    <div class="preset-card" style="--preset-color: var(--preset-devops);">
+                        <div class="preset-icon">☁️</div>
+                        <div class="preset-header">
+                            <h3>devops</h3>
+                        </div>
+                        <p>Kubernetes, containers, and cloud infrastructure.</p>
                         <div class="preset-tools">
                             <span>kubectl</span>
                             <span>helm</span>
@@ -510,66 +706,130 @@
                             <span>awscli</span>
                         </div>
                     </div>
-                    <div class="preset-card">
-                        <h3>frontend</h3>
-                        <p>Web development focused</p>
+                    
+                    <div class="preset-card" style="--preset-color: var(--preset-frontend);">
+                        <div class="preset-icon">🎨</div>
+                        <div class="preset-header">
+                            <h3>frontend</h3>
+                        </div>
+                        <p>Modern web development with design tools.</p>
                         <div class="preset-tools">
                             <span>node</span>
-                            <span>yarn</span>
                             <span>pnpm</span>
                             <span>bun</span>
                             <span>Figma</span>
+                            <span>Arc</span>
                         </div>
                     </div>
-                    <div class="preset-card">
-                        <h3>data</h3>
-                        <p>Data science & analytics</p>
+                    
+                    <div class="preset-card" style="--preset-color: var(--preset-data);">
+                        <div class="preset-icon">📊</div>
+                        <div class="preset-header">
+                            <h3>data</h3>
+                        </div>
+                        <p>Data science, analytics, and database tools.</p>
                         <div class="preset-tools">
                             <span>python</span>
                             <span>uv</span>
+                            <span>duckdb</span>
                             <span>postgresql</span>
                             <span>DBeaver</span>
                         </div>
                     </div>
-                    <div class="preset-card">
-                        <h3>full</h3>
-                        <p>Comprehensive suite</p>
+                    
+                    <div class="preset-card" style="--preset-color: var(--preset-mobile);">
+                        <div class="preset-icon">📱</div>
+                        <div class="preset-header">
+                            <h3>mobile <span class="badge new">New</span></h3>
+                        </div>
+                        <p>iOS and Android development essentials.</p>
                         <div class="preset-tools">
-                            <span>All standard +</span>
-                            <span>Notion</span>
-                            <span>Telegram</span>
-                            <span>MS Office</span>
+                            <span>cocoapods</span>
+                            <span>fastlane</span>
+                            <span>scrcpy</span>
+                            <span>Android Studio</span>
+                            <span>Figma</span>
+                        </div>
+                    </div>
+                    
+                    <div class="preset-card" style="--preset-color: var(--preset-ai);">
+                        <div class="preset-icon">🤖</div>
+                        <div class="preset-header">
+                            <h3>ai <span class="badge new">New</span></h3>
+                        </div>
+                        <p>AI/ML development with local LLMs.</p>
+                        <div class="preset-tools">
+                            <span>ollama</span>
+                            <span>llm</span>
+                            <span>python</span>
+                            <span>Cursor</span>
+                            <span>LM Studio</span>
                         </div>
                     </div>
                 </div>
             </section>
             
             <section class="options-section">
-                <h2 class="section-title">Options</h2>
-                <div class="options-grid">
-                    <div class="option-item">
-                        <code>--preset NAME</code>
-                        <p>Set preset (minimal, standard, full, devops, frontend, data)</p>
+                <div class="section-header">
+                    <h2 class="section-title">Command Options</h2>
+                    <p class="section-subtitle">Customize your installation with these flags</p>
+                </div>
+                <div class="options-container">
+                    <div class="options-group">
+                        <div class="options-group-header">
+                            <div class="options-group-icon">🔧</div>
+                            <span class="options-group-title">Setup</span>
+                        </div>
+                        <div class="option-item">
+                            <code>--preset NAME</code>
+                            <p>Choose preset (minimal, standard, full, devops, frontend, data, mobile, ai)</p>
+                        </div>
+                        <div class="option-item">
+                            <code>--shell install</code>
+                            <p>Install Oh-My-Zsh with plugins</p>
+                        </div>
+                        <div class="option-item">
+                            <code>--macos configure</code>
+                            <p>Configure macOS developer preferences</p>
+                        </div>
                     </div>
-                    <div class="option-item">
-                        <code>--silent</code>
-                        <p>Non-interactive mode for CI/automation</p>
+                    
+                    <div class="options-group">
+                        <div class="options-group-header">
+                            <div class="options-group-icon">🔄</div>
+                            <span class="options-group-title">Maintenance</span>
+                        </div>
+                        <div class="option-item">
+                            <code>--update</code>
+                            <p>Update Homebrew and all packages</p>
+                        </div>
+                        <div class="option-item">
+                            <code>--rollback</code>
+                            <p>Restore backed up files</p>
+                        </div>
+                        <div class="option-item">
+                            <code>--resume</code>
+                            <p>Continue interrupted installation</p>
+                        </div>
                     </div>
-                    <div class="option-item">
-                        <code>--shell install</code>
-                        <p>Install Oh-My-Zsh with plugins</p>
-                    </div>
-                    <div class="option-item">
-                        <code>--rollback</code>
-                        <p>Restore backed up files</p>
-                    </div>
-                    <div class="option-item">
-                        <code>--update</code>
-                        <p>Update Homebrew and all packages</p>
-                    </div>
-                    <div class="option-item">
-                        <code>--dry-run</code>
-                        <p>Preview what would be installed</p>
+                    
+                    <div class="options-group">
+                        <div class="options-group-header">
+                            <div class="options-group-icon">⚙️</div>
+                            <span class="options-group-title">Mode</span>
+                        </div>
+                        <div class="option-item">
+                            <code>--silent</code>
+                            <p>Non-interactive for CI/automation</p>
+                        </div>
+                        <div class="option-item">
+                            <code>--dry-run</code>
+                            <p>Preview without installing</p>
+                        </div>
+                        <div class="option-item">
+                            <code>--help</code>
+                            <p>Show all available options</p>
+                        </div>
                     </div>
                 </div>
             </section>
