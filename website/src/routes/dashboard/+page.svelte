@@ -102,6 +102,11 @@
 		return p ? [...p.cli, ...p.cask] : [];
 	}
 
+	function getExtraPackages(): string[] {
+		const presetPkgs = new Set(getPresetPackages(formData.base_preset));
+		return Array.from(selectedPackages).filter((pkg) => !presetPkgs.has(pkg));
+	}
+
 
 
 	function initPackagesForPreset(preset: string) {
@@ -433,7 +438,20 @@
 			<div class="packages-section">
 				<div class="packages-header">
 					<span class="packages-title">Additional Packages</span>
+					{#if getExtraPackages().length > 0}
+						<span class="extra-count">{getExtraPackages().length} added</span>
+					{/if}
 				</div>
+				{#if getExtraPackages().length > 0}
+					<div class="selected-extras">
+						{#each getExtraPackages() as pkg}
+							<button type="button" class="extra-tag" onclick={() => togglePackage(pkg)}>
+								{pkg}
+								<span class="remove-icon">×</span>
+							</button>
+						{/each}
+					</div>
+				{/if}
 				<div class="packages-search">
 					<input 
 						type="text" 
@@ -914,7 +932,50 @@
 		font-weight: 500;
 	}
 
+	.extra-count {
+		font-size: 0.8rem;
+		color: var(--accent);
+	}
 
+	.selected-extras {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-bottom: 12px;
+		padding: 10px;
+		background: rgba(34, 197, 94, 0.05);
+		border: 1px dashed var(--accent);
+		border-radius: 8px;
+	}
+
+	.extra-tag {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		padding: 4px 8px;
+		background: var(--accent);
+		color: #000;
+		border: none;
+		border-radius: 4px;
+		font-size: 0.75rem;
+		font-family: 'JetBrains Mono', monospace;
+		cursor: pointer;
+		transition: all 0.15s;
+	}
+
+	.extra-tag:hover {
+		background: #1a9f4a;
+	}
+
+	.remove-icon {
+		font-size: 0.9rem;
+		font-weight: bold;
+		opacity: 0.7;
+	}
+
+	.extra-tag:hover .remove-icon {
+		opacity: 1;
+	}
 
 	.search-status,
 	.search-hint {
