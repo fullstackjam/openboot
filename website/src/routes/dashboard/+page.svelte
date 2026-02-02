@@ -15,6 +15,7 @@
 		alias: string | null;
 		packages?: string[];
 		custom_script?: string;
+		dotfiles_repo?: string;
 	}
 
 	let configs = $state<Config[]>([]);
@@ -31,7 +32,8 @@
 		is_public: true,
 		alias: '',
 		packages: [] as string[],
-		custom_script: ''
+		custom_script: '',
+		dotfiles_repo: ''
 	});
 
 	const PRESET_PACKAGES: Record<string, { cli: string[]; cask: string[] }> = {
@@ -57,6 +59,17 @@
 	let currentCategory = $state(Object.keys(EXTRA_PACKAGES)[0]);
 	let selectedPackages = $state(new Set<string>());
 	let presetExpanded = $state(false);
+	let packageSearch = $state('');
+
+	function getFilteredPackages(): string[] {
+		const search = packageSearch.toLowerCase().trim();
+		if (!search) {
+			return EXTRA_PACKAGES[currentCategory] || [];
+		}
+		// Search across all categories when there's a search term
+		const allPackages = Object.values(EXTRA_PACKAGES).flat();
+		return allPackages.filter(pkg => pkg.toLowerCase().includes(search));
+	}
 
 	function getPresetPackages(preset: string): string[] {
 		const p = PRESET_PACKAGES[preset];
@@ -126,7 +139,8 @@
 				is_public: config.is_public === 1,
 				alias: config.alias || '',
 				packages: config.packages || [],
-				custom_script: config.custom_script || ''
+				custom_script: config.custom_script || '',
+				dotfiles_repo: config.dotfiles_repo || ''
 			};
 			const savedPkgs = config.packages || [];
 			if (savedPkgs.length > 0) {
@@ -143,7 +157,8 @@
 				is_public: true,
 				alias: '',
 				packages: [],
-				custom_script: ''
+				custom_script: '',
+				dotfiles_repo: ''
 			};
 			initPackagesForPreset('developer');
 		}
@@ -365,6 +380,12 @@
 					<p class="form-hint">2-20 characters, lowercase letters, numbers, and dashes only.</p>
 				</div>
 
+				<div class="form-group">
+					<label class="form-label">Dotfiles Repository (Optional)</label>
+					<input type="text" class="form-input" bind:value={formData.dotfiles_repo} placeholder="https://github.com/username/dotfiles" />
+					<p class="form-hint">After installing packages, OpenBoot will clone this repo and run <code>make deploy</code>.</p>
+				</div>
+
 				<div class="packages-section">
 					<div class="packages-header">
 						<span class="packages-title">Packages from "{formData.base_preset}" preset</span>
@@ -389,10 +410,19 @@
 					</div>
 				</div>
 
-				<div class="packages-section">
-					<div class="packages-header">
-						<span class="packages-title">Additional Packages</span>
-					</div>
+			<div class="packages-section">
+				<div class="packages-header">
+					<span class="packages-title">Additional Packages</span>
+				</div>
+				<div class="packages-search">
+					<input 
+						type="text" 
+						class="search-input" 
+						bind:value={packageSearch} 
+						placeholder="Search packages..." 
+					/>
+				</div>
+				{#if !packageSearch}
 					<div class="category-tabs">
 						{#each Object.keys(EXTRA_PACKAGES) as cat}
 							<button class="category-tab" class:active={cat === currentCategory} onclick={() => (currentCategory = cat)}>
@@ -400,15 +430,18 @@
 							</button>
 						{/each}
 					</div>
-					<div class="packages-grid">
-						{#each EXTRA_PACKAGES[currentCategory] || [] as pkg}
-							<label class="package-item" class:selected={selectedPackages.has(pkg)}>
-								<input type="checkbox" checked={selectedPackages.has(pkg)} onchange={() => togglePackage(pkg)} />
-								<span class="package-name">{pkg}</span>
-							</label>
-						{/each}
-					</div>
+				{/if}
+				<div class="packages-grid">
+					{#each getFilteredPackages() as pkg}
+						<label class="package-item" class:selected={selectedPackages.has(pkg)}>
+							<input type="checkbox" checked={selectedPackages.has(pkg)} onchange={() => togglePackage(pkg)} />
+							<span class="package-name">{pkg}</span>
+						</label>
+					{:else}
+						<div class="no-results">No packages found</div>
+					{/each}
 				</div>
+			</div>
 
 				<div class="form-group">
 					<label class="form-label">Custom Post-Install Script (Optional)</label>
@@ -757,6 +790,38 @@
 		margin-top: 24px;
 	}
 
+	.packages-search {
+		margin-bottom: 12px;
+	}
+
+	.search-input {
+		width: 100%;
+		padding: 10px 14px;
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		color: var(--text-primary);
+		font-size: 0.9rem;
+		font-family: inherit;
+	}
+
+	.search-input:focus {
+		outline: none;
+		border-color: var(--accent);
+	}
+
+	.search-input::placeholder {
+		color: var(--text-muted);
+	}
+
+	.no-results {
+		grid-column: 1 / -1;
+		text-align: center;
+		color: var(--text-muted);
+		padding: 20px;
+		font-size: 0.9rem;
+	}
+
 	.packages-header {
 		display: flex;
 		justify-content: space-between;
@@ -829,10 +894,7 @@
 		font-weight: 500;
 	}
 
-	.packages-count {
-		font-size: 0.85rem;
-		color: var(--text-muted);
-	}
+
 
 	.category-tabs {
 		display: flex;

@@ -37,7 +37,7 @@ export const PUT: RequestHandler = async ({ platform, cookies, params, request }
 		return json({ error: 'Invalid request body' }, { status: 400 });
 	}
 
-	const { name, description, base_preset, packages, custom_script, is_public, alias } = body;
+	const { name, description, base_preset, packages, custom_script, is_public, alias, dotfiles_repo } = body;
 	const slug = params.slug;
 
 	const existing = await env.DB.prepare('SELECT id, alias FROM configs WHERE user_id = ? AND slug = ?').bind(user.id, slug).first<{ id: string; alias: string | null }>();
@@ -80,6 +80,7 @@ export const PUT: RequestHandler = async ({ platform, cookies, params, request }
 				custom_script = COALESCE(?, custom_script),
 				is_public = COALESCE(?, is_public),
 				alias = ?,
+				dotfiles_repo = COALESCE(?, dotfiles_repo),
 				updated_at = datetime('now')
 			WHERE user_id = ? AND slug = ?
 		`
@@ -93,6 +94,7 @@ export const PUT: RequestHandler = async ({ platform, cookies, params, request }
 				custom_script !== undefined ? custom_script : null,
 				is_public !== undefined ? (is_public ? 1 : 0) : null,
 				newAlias,
+				dotfiles_repo !== undefined ? dotfiles_repo : null,
 				user.id,
 				slug
 			)

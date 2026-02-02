@@ -1,6 +1,6 @@
 import type { Handle } from '@sveltejs/kit';
 
-function generateInstallScript(username: string, slug: string, customScript: string): string {
+function generateInstallScript(username: string, slug: string, customScript: string, dotfilesRepo: string): string {
 	return `#!/bin/bash
 set -e
 
@@ -32,6 +32,33 @@ echo "Using remote config: @${username}/${slug}"
 "\$OPENBOOT_BIN" --user ${username}/${slug} "\$@"
 
 ${
+		dotfilesRepo
+			? `
+echo ""
+echo "=== Setting up Dotfiles ==="
+DOTFILES_REPO="${dotfilesRepo}"
+DOTFILES_DIR="\$HOME/.dotfiles"
+
+if [ -d "\$DOTFILES_DIR" ]; then
+  echo "Dotfiles directory already exists at \$DOTFILES_DIR"
+  echo "Pulling latest changes..."
+  cd "\$DOTFILES_DIR" && git pull
+else
+  echo "Cloning dotfiles from \$DOTFILES_REPO..."
+  git clone "\$DOTFILES_REPO" "\$DOTFILES_DIR"
+fi
+
+cd "\$DOTFILES_DIR"
+if [ -f "Makefile" ]; then
+  echo "Running make deploy..."
+  make deploy
+else
+  echo "No Makefile found in dotfiles repo, skipping deploy"
+fi
+`
+			: ''
+	}
+${
 		customScript
 			? `
 echo ""
@@ -55,12 +82,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 		const env = event.platform?.env;
 
 		if (env) {
-			const config = await env.DB.prepare('SELECT c.slug, c.custom_script, u.username FROM configs c JOIN users u ON c.user_id = u.id WHERE c.alias = ? AND c.is_public = 1')
+			const config = await env.DB.prepare('SELECT c.slug, c.custom_script, c.dotfiles_repo, u.username FROM configs c JOIN users u ON c.user_id = u.id WHERE c.alias = ? AND c.is_public = 1')
 				.bind(alias)
-				.first<{ slug: string; username: string; custom_script: string }>();
+				.first<{ slug: string; username: string; custom_script: string; dotfiles_repo: string }>();
 
 			if (config) {
-				const script = generateInstallScript(config.username, config.slug, config.custom_script);
+				const script = generateInstallScript(config.username, config.slug, config.custom_script, config.dotfiles_repo || '');
 
 				return new Response(script, {
 					headers: {

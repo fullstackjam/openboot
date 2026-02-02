@@ -16,10 +16,10 @@ export const GET: RequestHandler = async ({ platform, params }) => {
 	}
 
 	const config = await env.DB.prepare(
-		'SELECT slug, name, base_preset, packages, is_public FROM configs WHERE user_id = ? AND slug = ?'
+		'SELECT slug, name, base_preset, packages, is_public, dotfiles_repo FROM configs WHERE user_id = ? AND slug = ?'
 	)
 		.bind(user.id, params.slug)
-		.first<{ slug: string; name: string; base_preset: string; packages: string; is_public: number }>();
+		.first<{ slug: string; name: string; base_preset: string; packages: string; is_public: number; dotfiles_repo: string }>();
 
 	if (!config) {
 		return json({ error: 'Config not found' }, { status: 404 });
@@ -36,6 +36,7 @@ export const GET: RequestHandler = async ({ platform, params }) => {
 		slug: config.slug,
 		name: config.name,
 		preset: config.base_preset,
-		packages: packages
+		packages: packages,
+		dotfiles_repo: config.dotfiles_repo || ''
 	});
 };

@@ -30,7 +30,7 @@ export const POST: RequestHandler = async ({ platform, cookies, request }) => {
 		return json({ error: 'Invalid request body' }, { status: 400 });
 	}
 
-	const { name, description, base_preset, packages, custom_script, is_public, alias } = body;
+	const { name, description, base_preset, packages, custom_script, is_public, alias, dotfiles_repo } = body;
 
 	if (!name) return json({ error: 'Name is required' }, { status: 400 });
 
@@ -64,11 +64,11 @@ export const POST: RequestHandler = async ({ platform, cookies, request }) => {
 	try {
 		await env.DB.prepare(
 			`
-			INSERT INTO configs (id, user_id, slug, name, description, base_preset, packages, custom_script, is_public, alias)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			INSERT INTO configs (id, user_id, slug, name, description, base_preset, packages, custom_script, is_public, alias, dotfiles_repo)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`
 		)
-			.bind(id, user.id, slug, name, description || '', base_preset || 'developer', JSON.stringify(packages || []), custom_script || '', is_public !== false ? 1 : 0, cleanAlias)
+			.bind(id, user.id, slug, name, description || '', base_preset || 'developer', JSON.stringify(packages || []), custom_script || '', is_public !== false ? 1 : 0, cleanAlias, dotfiles_repo || '')
 			.run();
 	} catch (e) {
 		return json({ error: 'Database error: ' + (e as Error).message }, { status: 500 });
