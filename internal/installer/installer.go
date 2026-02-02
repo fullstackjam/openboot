@@ -68,10 +68,6 @@ func runInteractiveInstall(cfg *config.Config) error {
 		return err
 	}
 
-	if err := stepSSHKey(cfg); err != nil {
-		ui.Error(fmt.Sprintf("SSH key setup failed: %v", err))
-	}
-
 	if err := stepPresetSelection(cfg); err != nil {
 		return err
 	}
@@ -146,102 +142,8 @@ func stepGitConfig(cfg *config.Config) error {
 	return nil
 }
 
-func stepSSHKey(cfg *config.Config) error {
-	ui.Header("Step 2: SSH Key Setup")
-	fmt.Println()
-
-	if cfg.Silent || (cfg.DryRun && !system.HasTTY()) {
-		if system.SSHKeyExists() {
-			ui.Muted("SSH key already exists")
-		} else {
-			ui.Muted("Skipping SSH key generation (non-interactive mode)")
-		}
-		fmt.Println()
-		return nil
-	}
-
-	if system.SSHKeyExists() {
-		ui.Success("SSH key found")
-
-		if !system.IsGitSigningConfigured() {
-			setupSigning, err := ui.Confirm("Enable Git commit signing with your SSH key?", true)
-			if err != nil {
-				return err
-			}
-
-			if setupSigning {
-				keyPath := system.GetSSHKeyPath()
-				if cfg.DryRun {
-					fmt.Printf("[DRY-RUN] Would configure Git SSH signing with %s\n", keyPath)
-				} else {
-					if err := system.ConfigureGitSSHSigning(keyPath); err != nil {
-						return err
-					}
-					ui.Success("Git commit signing enabled")
-				}
-			}
-		} else {
-			ui.Muted("Git commit signing already configured")
-		}
-
-		fmt.Println()
-		return nil
-	}
-
-	generate, err := ui.Confirm("No SSH key found. Generate one?", true)
-	if err != nil {
-		return err
-	}
-
-	if !generate {
-		ui.Muted("Skipping SSH key generation")
-		fmt.Println()
-		return nil
-	}
-
-	email := system.GetGitConfig("user.email")
-	if email == "" {
-		email = "your@email.com"
-	}
-
-	if cfg.DryRun {
-		fmt.Printf("[DRY-RUN] Would generate SSH key for %s\n", email)
-		fmt.Println()
-		return nil
-	}
-
-	ui.Info("Generating SSH key...")
-	pubKey, err := system.GenerateSSHKey(email)
-	if err != nil {
-		return err
-	}
-
-	ui.Success("SSH key generated!")
-	fmt.Println()
-	ui.Info("Your public key (add to GitHub -> Settings -> SSH Keys):")
-	fmt.Println()
-	fmt.Println(pubKey)
-	fmt.Println()
-
-	setupSigning, err := ui.Confirm("Enable Git commit signing with this key?", true)
-	if err != nil {
-		return err
-	}
-
-	if setupSigning {
-		keyPath := system.GetSSHKeyPath()
-		if err := system.ConfigureGitSSHSigning(keyPath); err != nil {
-			return err
-		}
-		ui.Success("Git commit signing enabled")
-	}
-
-	fmt.Println()
-	return nil
-}
-
 func stepPresetSelection(cfg *config.Config) error {
-	ui.Header("Step 3: Preset Selection")
+	ui.Header("Step 2: Preset Selection")
 	fmt.Println()
 
 	if cfg.Preset == "" {
@@ -270,7 +172,7 @@ func stepPresetSelection(cfg *config.Config) error {
 }
 
 func stepPackageCustomization(cfg *config.Config) error {
-	ui.Header("Step 4: Package Selection")
+	ui.Header("Step 3: Package Selection")
 	fmt.Println()
 
 	if cfg.Silent || (cfg.DryRun && !system.HasTTY()) {
@@ -315,7 +217,7 @@ func stepPackageCustomization(cfg *config.Config) error {
 }
 
 func stepInstallPackages(cfg *config.Config) error {
-	ui.Header("Step 5: Installation")
+	ui.Header("Step 4: Installation")
 	fmt.Println()
 
 	var cliPkgs, caskPkgs []string
@@ -367,7 +269,7 @@ func stepDotfiles(cfg *config.Config) error {
 		return nil
 	}
 
-	ui.Header("Step 7: Dotfiles")
+	ui.Header("Step 6: Dotfiles")
 	fmt.Println()
 
 	dotfilesURL := dotfiles.GetDotfilesURL()
@@ -419,7 +321,7 @@ func stepShell(cfg *config.Config) error {
 		return nil
 	}
 
-	ui.Header("Step 6: Shell Configuration")
+	ui.Header("Step 5: Shell Configuration")
 	fmt.Println()
 
 	if cfg.Shell == "" {
@@ -468,7 +370,7 @@ func stepMacOS(cfg *config.Config) error {
 		return nil
 	}
 
-	ui.Header("Step 8: macOS Preferences")
+	ui.Header("Step 7: macOS Preferences")
 	fmt.Println()
 
 	if cfg.Macos == "" {
