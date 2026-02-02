@@ -27,7 +27,7 @@ func Run(cfg *config.Config) error {
 
 func runInstall(cfg *config.Config) error {
 	fmt.Println()
-	ui.Header("OpenBoot Installer v0.5.1")
+	ui.Header("OpenBoot Installer v0.5.2")
 	fmt.Println()
 
 	if cfg.RemoteConfig != nil {
@@ -54,6 +54,14 @@ func runInstall(cfg *config.Config) error {
 
 	if err := stepInstallPackages(cfg); err != nil {
 		return err
+	}
+
+	if cfg.RemoteConfig != nil {
+		fmt.Println()
+		ui.Success("Package installation complete!")
+		ui.Muted("Dotfiles and shell setup will be handled by the install script.")
+		fmt.Println()
+		return nil
 	}
 
 	if err := stepDotfiles(cfg); err != nil {
@@ -120,6 +128,10 @@ func stepGitConfig(cfg *config.Config) error {
 }
 
 func stepPresetSelection(cfg *config.Config) error {
+	if cfg.RemoteConfig != nil {
+		return nil
+	}
+
 	ui.Header("Step 2: Preset Selection")
 	fmt.Println()
 
@@ -149,19 +161,21 @@ func stepPresetSelection(cfg *config.Config) error {
 }
 
 func stepPackageCustomization(cfg *config.Config) error {
+	if cfg.RemoteConfig != nil {
+		cfg.SelectedPkgs = make(map[string]bool)
+		for _, pkg := range cfg.RemoteConfig.Packages {
+			cfg.SelectedPkgs[pkg] = true
+		}
+		ui.Info(fmt.Sprintf("Using %d packages from remote config", len(cfg.RemoteConfig.Packages)))
+		fmt.Println()
+		return nil
+	}
+
 	ui.Header("Step 3: Package Selection")
 	fmt.Println()
 
 	if cfg.Silent || (cfg.DryRun && !system.HasTTY()) {
 		cfg.SelectedPkgs = config.GetPackagesForPreset(cfg.Preset)
-
-		if cfg.RemoteConfig != nil && len(cfg.RemoteConfig.Packages) > 0 {
-			for _, pkg := range cfg.RemoteConfig.Packages {
-				cfg.SelectedPkgs[pkg] = true
-			}
-			ui.Info(fmt.Sprintf("Using preset + %d additional packages from remote config", len(cfg.RemoteConfig.Packages)))
-		}
-
 		total := len(cfg.SelectedPkgs)
 		ui.Info(fmt.Sprintf("Using preset packages: %d selected", total))
 		fmt.Println()
@@ -202,47 +216,26 @@ func stepPackageCustomization(cfg *config.Config) error {
 }
 
 func stepInstallPackages(cfg *config.Config) error {
-	ui.Header("Step 4: Installation")
+	ui.Header("Step 2: Installation")
 	fmt.Println()
 
 	var cliPkgs, caskPkgs []string
 
-	knownCasks := make(map[string]bool)
-	for _, cat := range config.Categories {
-		for _, pkg := range cat.Packages {
-			if pkg.IsCask {
-				knownCasks[pkg.Name] = true
-			}
+	if cfg.RemoteConfig != nil {
+		for pkg := range cfg.SelectedPkgs {
+			caskPkgs = append(caskPkgs, pkg)
 		}
-	}
-
-	for _, cat := range config.Categories {
-		for _, pkg := range cat.Packages {
-			if cfg.SelectedPkgs[pkg.Name] {
-				if pkg.IsCask {
-					caskPkgs = append(caskPkgs, pkg.Name)
-				} else {
-					cliPkgs = append(cliPkgs, pkg.Name)
+	} else {
+		for _, cat := range config.Categories {
+			for _, pkg := range cat.Packages {
+				if cfg.SelectedPkgs[pkg.Name] {
+					if pkg.IsCask {
+						caskPkgs = append(caskPkgs, pkg.Name)
+					} else {
+						cliPkgs = append(cliPkgs, pkg.Name)
+					}
 				}
 			}
-		}
-	}
-
-	if cfg.RemoteConfig != nil {
-		added := make(map[string]bool)
-		for _, p := range cliPkgs {
-			added[p] = true
-		}
-		for _, p := range caskPkgs {
-			added[p] = true
-		}
-
-		for _, pkg := range cfg.RemoteConfig.Packages {
-			if added[pkg] {
-				continue
-			}
-			caskPkgs = append(caskPkgs, pkg)
-			added[pkg] = true
 		}
 	}
 

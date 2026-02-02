@@ -29,17 +29,24 @@ export const GET: RequestHandler = async ({ url, platform, cookies }) => {
 		redirect(302, `${env.APP_URL}?error=token_failed`);
 	}
 
-	const userResponse = await fetch(GITHUB_USER_URL, {
-		headers: {
-			Authorization: `Bearer ${tokenData.access_token}`,
-			Accept: 'application/json',
-			'User-Agent': 'OpenBoot'
-		}
-	});
+	const headers = {
+		Authorization: `Bearer ${tokenData.access_token}`,
+		Accept: 'application/json',
+		'User-Agent': 'OpenBoot'
+	};
 
+	const userResponse = await fetch(GITHUB_USER_URL, { headers });
 	const githubUser = await userResponse.json();
 	if (!githubUser.id || !githubUser.login) {
 		redirect(302, `${env.APP_URL}?error=user_failed`);
+	}
+
+	let email = githubUser.email || '';
+	if (!email) {
+		const emailsResponse = await fetch('https://api.github.com/user/emails', { headers });
+		const emails = await emailsResponse.json();
+		const primary = emails.find((e: { primary: boolean; email: string }) => e.primary);
+		email = primary?.email || emails[0]?.email || '';
 	}
 
 	const userId = String(githubUser.id);
@@ -55,7 +62,7 @@ export const GET: RequestHandler = async ({ url, platform, cookies }) => {
 			updated_at = datetime('now')
 	`
 	)
-		.bind(userId, githubUser.login, githubUser.email || '', githubUser.avatar_url || '')
+		.bind(userId, githubUser.login, email, githubUser.avatar_url || '')
 		.run();
 
 	const existingConfig = await env.DB.prepare('SELECT id FROM configs WHERE user_id = ? AND slug = ?').bind(userId, 'default').first();
