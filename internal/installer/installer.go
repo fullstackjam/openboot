@@ -27,7 +27,7 @@ func Run(cfg *config.Config) error {
 
 func runInstall(cfg *config.Config) error {
 	fmt.Println()
-	ui.Header("OpenBoot Installer v0.5.2")
+	ui.Header("OpenBoot Installer v0.6.0")
 	fmt.Println()
 
 	if cfg.RemoteConfig != nil {
