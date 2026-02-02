@@ -65,15 +65,24 @@ curl -fsSL openboot.dev/install | bash -s -- --preset minimal --silent
 | **developer** | General development | Node, Go, Docker, VS Code, OrbStack |
 | **full** | Complete setup | kubectl, terraform, Python, Cursor |
 
+## Commands
+
+```bash
+openboot            # Interactive setup
+openboot doctor     # Check system health
+openboot update     # Update Homebrew and packages
+openboot version    # Print version
+```
+
 ## CLI Options
 
 ```
---preset NAME     Set preset (minimal, developer, full)
---user USERNAME   Use remote config from openboot.dev
---silent          Non-interactive mode (requires env vars)
---dry-run         Preview what would be installed
---update          Update Homebrew and upgrade all packages
---rollback        Restore backed up files
+-p, --preset NAME   Set preset (minimal, developer, full)
+-u, --user NAME     Use remote config from openboot.dev
+-s, --silent        Non-interactive mode (requires env vars)
+    --dry-run       Preview what would be installed
+    --rollback      Restore backed up files
+    --resume        Resume incomplete installation
 ```
 
 ## Environment Variables
@@ -85,21 +94,24 @@ curl -fsSL openboot.dev/install | bash -s -- --preset minimal --silent
 | `OPENBOOT_PRESET` | Default preset |
 | `OPENBOOT_USER` | Remote config username |
 
+## Features
+
+- **Parallel installation** - Installs up to 4 packages simultaneously
+- **Smart retry** - Failed packages can be retried or skipped
+- **Search** - Press `/` in package selector to search across categories
+- **Pre-flight checks** - Network connectivity and disk space verification
+- **Doctor** - Diagnose issues with `openboot doctor`
+
 ## Development
 
 ```bash
-# Clone
 git clone https://github.com/openbootdotdev/openboot.git
 cd openboot
 
-# Build
-make build
-
-# Run locally
+go build -o openboot ./cmd/openboot
 ./openboot --dry-run
 
-# Run tests
-make test
+go test ./...
 ```
 
 ## Project Structure
