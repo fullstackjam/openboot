@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/openbootdotdev/openboot/internal/brew"
 	"github.com/openbootdotdev/openboot/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -41,6 +42,8 @@ func runDoctor() error {
 	var results []checkResult
 	var issues int
 
+	results = append(results, checkNetwork()...)
+	results = append(results, checkDiskSpace()...)
 	results = append(results, checkHomebrew()...)
 	results = append(results, checkGit()...)
 	results = append(results, checkShell()...)
@@ -58,6 +61,15 @@ func runDoctor() error {
 			issues++
 		case "info":
 			fmt.Printf("  %s %s: %s\n", ui.Cyan("i"), r.name, r.message)
+		}
+	}
+
+	suggestions, _ := brew.DoctorDiagnose()
+	if len(suggestions) > 0 {
+		fmt.Println()
+		ui.Info("Suggested fixes:")
+		for _, s := range suggestions {
+			fmt.Printf("    %s\n", s)
 		}
 	}
 
@@ -208,4 +220,44 @@ func checkTools() []checkResult {
 	}
 
 	return results
+}
+
+func checkNetwork() []checkResult {
+	if err := brew.CheckNetwork(); err != nil {
+		return []checkResult{{
+			name:    "Network",
+			status:  "error",
+			message: "cannot reach GitHub (required for Homebrew)",
+		}}
+	}
+	return []checkResult{{
+		name:   "Network connectivity",
+		status: "ok",
+	}}
+}
+
+func checkDiskSpace() []checkResult {
+	availableGB, err := brew.CheckDiskSpace()
+	if err != nil {
+		return nil
+	}
+
+	if availableGB < 1.0 {
+		return []checkResult{{
+			name:    "Disk space",
+			status:  "error",
+			message: fmt.Sprintf("critically low: %.1f GB available", availableGB),
+		}}
+	}
+	if availableGB < 5.0 {
+		return []checkResult{{
+			name:    "Disk space",
+			status:  "warn",
+			message: fmt.Sprintf("low: %.1f GB available", availableGB),
+		}}
+	}
+	return []checkResult{{
+		name:   fmt.Sprintf("Disk space (%.0f GB free)", availableGB),
+		status: "ok",
+	}}
 }

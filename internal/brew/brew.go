@@ -3,10 +3,13 @@ package brew
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"strings"
 	"sync"
+	"syscall"
+	"time"
 
 	"github.com/openbootdotdev/openboot/internal/ui"
 )
@@ -146,6 +149,10 @@ func InstallWithProgress(cliPkgs, caskPkgs []string, dryRun bool) error {
 			fmt.Printf("    brew install --cask %s\n", p)
 		}
 		return nil
+	}
+
+	if err := PreInstallChecks(total); err != nil {
+		return err
 	}
 
 	allJobs := make([]installJob, 0, total)
@@ -361,4 +368,94 @@ func Update(dryRun bool) error {
 func Cleanup() error {
 	ui.Info("Cleaning up old versions...")
 	return exec.Command("brew", "cleanup").Run()
+}
+
+func CheckNetwork() error {
+	hosts := []string{"github.com:443", "raw.githubusercontent.com:443"}
+	for _, host := range hosts {
+		conn, err := net.DialTimeout("tcp", host, 5*time.Second)
+		if err != nil {
+			return fmt.Errorf("cannot reach %s: %v", host, err)
+		}
+		conn.Close()
+	}
+	return nil
+}
+
+func CheckDiskSpace() (float64, error) {
+	var stat syscall.Statfs_t
+	home, _ := os.UserHomeDir()
+	if err := syscall.Statfs(home, &stat); err != nil {
+		return 0, err
+	}
+	availableGB := float64(stat.Bavail*uint64(stat.Bsize)) / (1024 * 1024 * 1024)
+	return availableGB, nil
+}
+
+func DoctorDiagnose() ([]string, error) {
+	cmd := exec.Command("brew", "doctor")
+	output, _ := cmd.CombinedOutput()
+	outputStr := string(output)
+
+	if strings.Contains(outputStr, "ready to brew") {
+		return nil, nil
+	}
+
+	var suggestions []string
+	lowerOutput := strings.ToLower(outputStr)
+
+	if strings.Contains(lowerOutput, "unbrewed header files") {
+		suggestions = append(suggestions, "Run: sudo rm -rf /usr/local/include")
+	}
+	if strings.Contains(lowerOutput, "unbrewed dylibs") {
+		suggestions = append(suggestions, "Run: brew doctor --list-checks and review linked libraries")
+	}
+	if strings.Contains(lowerOutput, "homebrew/core") && strings.Contains(lowerOutput, "tap") {
+		suggestions = append(suggestions, "Run: brew untap homebrew/core homebrew/cask")
+	}
+	if strings.Contains(lowerOutput, "git origin remote") {
+		suggestions = append(suggestions, "Run: brew update-reset")
+	}
+	if strings.Contains(lowerOutput, "broken symlinks") {
+		suggestions = append(suggestions, "Run: brew cleanup --prune=all")
+	}
+	if strings.Contains(lowerOutput, "outdated xcode") || strings.Contains(lowerOutput, "command line tools") {
+		suggestions = append(suggestions, "Run: xcode-select --install")
+	}
+	if strings.Contains(lowerOutput, "uncommitted modifications") {
+		suggestions = append(suggestions, "Run: brew update-reset")
+	}
+	if strings.Contains(lowerOutput, "permission") {
+		suggestions = append(suggestions, "Run: sudo chown -R $(whoami) $(brew --prefix)/*")
+	}
+
+	if len(suggestions) == 0 && !strings.Contains(outputStr, "ready to brew") {
+		suggestions = append(suggestions, "Run 'brew doctor' to see full diagnostic output")
+	}
+
+	return suggestions, nil
+}
+
+func PreInstallChecks(packageCount int) error {
+	ui.Info("Checking network connectivity...")
+	if err := CheckNetwork(); err != nil {
+		return fmt.Errorf("network check failed: %v\nPlease check your internet connection and try again", err)
+	}
+
+	estimatedGB := float64(packageCount) * 0.2
+	if estimatedGB < 1.0 {
+		estimatedGB = 1.0
+	}
+
+	availableGB, err := CheckDiskSpace()
+	if err == nil {
+		if availableGB < estimatedGB {
+			return fmt.Errorf("insufficient disk space: %.1f GB available, estimated %.1f GB needed\nFree up disk space and try again", availableGB, estimatedGB)
+		}
+		if availableGB < 5.0 {
+			ui.Warn(fmt.Sprintf("Low disk space: %.1f GB available. Consider freeing up space.", availableGB))
+		}
+	}
+
+	return nil
 }

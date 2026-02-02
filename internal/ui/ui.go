@@ -73,6 +73,10 @@ func Muted(text string) {
 	fmt.Println(mutedStyle.Render(text))
 }
 
+func Warn(text string) {
+	fmt.Println(yellowStyle.Render("⚠ " + text))
+}
+
 func InputGitConfig() (name, email string, err error) {
 	existingName, existingEmail := system.GetExistingGitConfig()
 
