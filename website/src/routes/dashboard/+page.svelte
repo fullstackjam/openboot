@@ -115,12 +115,13 @@
 	}
 
 	function togglePresetPackage(pkg: string) {
-		if (selectedPackages.has(pkg)) {
-			selectedPackages.delete(pkg);
+		const newSet = new Set(selectedPackages);
+		if (newSet.has(pkg)) {
+			newSet.delete(pkg);
 		} else {
-			selectedPackages.add(pkg);
+			newSet.add(pkg);
 		}
-		selectedPackages = selectedPackages;
+		selectedPackages = newSet;
 	}
 
 	onMount(async () => {
@@ -189,13 +190,14 @@
 	}
 
 	function togglePackage(pkg: string) {
-		if (selectedPackages.has(pkg)) {
-			selectedPackages.delete(pkg);
+		const newSet = new Set(selectedPackages);
+		if (newSet.has(pkg)) {
+			newSet.delete(pkg);
 		} else {
-			selectedPackages.add(pkg);
+			newSet.add(pkg);
 		}
-		selectedPackages = selectedPackages;
-		formData.packages = Array.from(selectedPackages);
+		selectedPackages = newSet;
+		formData.packages = Array.from(newSet);
 	}
 
 	async function saveConfig() {
