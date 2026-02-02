@@ -115,10 +115,6 @@ export const DELETE: RequestHandler = async ({ platform, cookies, params }) => {
 	const user = await getCurrentUser(cookies, env.DB, env.JWT_SECRET);
 	if (!user) return json({ error: 'Unauthorized' }, { status: 401 });
 
-	if (params.slug === 'default') {
-		return json({ error: 'Cannot delete default config' }, { status: 400 });
-	}
-
 	await env.DB.prepare('DELETE FROM configs WHERE user_id = ? AND slug = ?').bind(user.id, params.slug).run();
 
 	return json({ success: true });

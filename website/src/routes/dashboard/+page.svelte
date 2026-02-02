@@ -24,6 +24,7 @@
 	let editingSlug = $state('');
 	let saving = $state(false);
 	let error = $state('');
+	let toast = $state('');
 
 	let formData = $state({
 		name: '',
@@ -274,7 +275,8 @@
 
 	function copyToClipboard(text: string) {
 		navigator.clipboard.writeText(text);
-		alert('Copied to clipboard!');
+		toast = 'Copied!';
+		setTimeout(() => toast = '', 2000);
 	}
 
 	function getInstallUrl(config: Config): string {
