@@ -56,6 +56,7 @@
 
 	let currentCategory = $state(Object.keys(EXTRA_PACKAGES)[0]);
 	let selectedPackages = $state(new Set<string>());
+	let presetExpanded = $state(false);
 
 	function getPresetPackages(preset: string): string[] {
 		const p = PRESET_PACKAGES[preset];
@@ -70,6 +71,25 @@
 			if (filtered.length > 0) result[cat] = filtered;
 		}
 		return result;
+	}
+
+	function initPackagesForPreset(preset: string) {
+		const presetPkgs = getPresetPackages(preset);
+		selectedPackages = new Set(presetPkgs);
+	}
+
+	function handlePresetChange(newPreset: string) {
+		formData.base_preset = newPreset;
+		initPackagesForPreset(newPreset);
+	}
+
+	function togglePresetPackage(pkg: string) {
+		if (selectedPackages.has(pkg)) {
+			selectedPackages.delete(pkg);
+		} else {
+			selectedPackages.add(pkg);
+		}
+		selectedPackages = selectedPackages;
 	}
 
 	onMount(async () => {
@@ -96,6 +116,7 @@
 	}
 
 	function openModal(config?: Config) {
+		presetExpanded = false;
 		if (config) {
 			editingSlug = config.slug;
 			formData = {
@@ -107,7 +128,12 @@
 				packages: config.packages || [],
 				custom_script: config.custom_script || ''
 			};
-			selectedPackages = new Set(config.packages || []);
+			const savedPkgs = config.packages || [];
+			if (savedPkgs.length > 0) {
+				selectedPackages = new Set(savedPkgs);
+			} else {
+				initPackagesForPreset(config.base_preset);
+			}
 		} else {
 			editingSlug = '';
 			formData = {
@@ -119,7 +145,7 @@
 				packages: [],
 				custom_script: ''
 			};
-			selectedPackages = new Set();
+			initPackagesForPreset('developer');
 		}
 		error = '';
 		showModal = true;
@@ -316,7 +342,7 @@
 
 				<div class="form-group">
 					<label class="form-label">Base Preset</label>
-					<select class="form-select" bind:value={formData.base_preset}>
+					<select class="form-select" onchange={(e) => handlePresetChange(e.currentTarget.value)} value={formData.base_preset}>
 						<option value="minimal">minimal - CLI essentials</option>
 						<option value="developer">developer - Ready-to-code setup</option>
 						<option value="full">full - Complete dev environment</option>
@@ -341,34 +367,41 @@
 
 				<div class="packages-section">
 					<div class="packages-header">
-						<span class="packages-title">Included in "{formData.base_preset}" preset</span>
-						<span class="packages-count">{getPresetPackages(formData.base_preset).length} packages</span>
+						<span class="packages-title">Packages from "{formData.base_preset}" preset</span>
+						<button class="expand-btn" onclick={() => presetExpanded = !presetExpanded}>
+							{presetExpanded ? 'Collapse' : 'Expand'} ({selectedPackages.size}/{getPresetPackages(formData.base_preset).length + Object.values(EXTRA_PACKAGES).flat().length})
+						</button>
 					</div>
-					<div class="preset-packages">
-						{#each getPresetPackages(formData.base_preset).slice(0, 12) as pkg}
-							<span class="preset-tag">{pkg}</span>
+					<p class="packages-hint">Click to toggle. Gray = won't install.</p>
+					<div class="preset-packages" class:expanded={presetExpanded}>
+						{#each presetExpanded ? getPresetPackages(formData.base_preset) : getPresetPackages(formData.base_preset).slice(0, 12) as pkg}
+							<button 
+								class="preset-tag" 
+								class:excluded={!selectedPackages.has(pkg)}
+								onclick={() => togglePresetPackage(pkg)}
+							>{pkg}</button>
 						{/each}
-						{#if getPresetPackages(formData.base_preset).length > 12}
-							<span class="preset-tag more">+{getPresetPackages(formData.base_preset).length - 12} more</span>
+						{#if !presetExpanded && getPresetPackages(formData.base_preset).length > 12}
+							<button class="preset-tag more" onclick={() => presetExpanded = true}>
+								+{getPresetPackages(formData.base_preset).length - 12} more
+							</button>
 						{/if}
 					</div>
 				</div>
 
-				{#if Object.keys(getAvailableExtras(formData.base_preset)).length > 0}
 				<div class="packages-section">
 					<div class="packages-header">
 						<span class="packages-title">Additional Packages</span>
-						<span class="packages-count">{selectedPackages.size} selected</span>
 					</div>
 					<div class="category-tabs">
-						{#each Object.keys(getAvailableExtras(formData.base_preset)) as cat}
+						{#each Object.keys(EXTRA_PACKAGES) as cat}
 							<button class="category-tab" class:active={cat === currentCategory} onclick={() => (currentCategory = cat)}>
 								{cat}
 							</button>
 						{/each}
 					</div>
 					<div class="packages-grid">
-						{#each getAvailableExtras(formData.base_preset)[currentCategory] || [] as pkg}
+						{#each EXTRA_PACKAGES[currentCategory] || [] as pkg}
 							<label class="package-item" class:selected={selectedPackages.has(pkg)}>
 								<input type="checkbox" checked={selectedPackages.has(pkg)} onchange={() => togglePackage(pkg)} />
 								<span class="package-name">{pkg}</span>
@@ -376,7 +409,6 @@
 						{/each}
 					</div>
 				</div>
-				{/if}
 
 				<div class="form-group">
 					<label class="form-label">Custom Post-Install Script (Optional)</label>
@@ -732,10 +764,36 @@
 		margin-bottom: 12px;
 	}
 
+	.packages-hint {
+		font-size: 0.75rem;
+		color: var(--text-muted);
+		margin-bottom: 10px;
+	}
+
+	.expand-btn {
+		background: none;
+		border: none;
+		color: var(--accent);
+		font-size: 0.8rem;
+		cursor: pointer;
+		padding: 4px 8px;
+	}
+
+	.expand-btn:hover {
+		text-decoration: underline;
+	}
+
 	.preset-packages {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 6px;
+		max-height: 80px;
+		overflow: hidden;
+		transition: max-height 0.3s ease;
+	}
+
+	.preset-packages.expanded {
+		max-height: none;
 	}
 
 	.preset-tag {
@@ -746,6 +804,18 @@
 		font-size: 0.75rem;
 		color: var(--text-secondary);
 		font-family: 'JetBrains Mono', monospace;
+		cursor: pointer;
+		transition: all 0.15s;
+	}
+
+	.preset-tag:hover {
+		border-color: var(--accent);
+	}
+
+	.preset-tag.excluded {
+		opacity: 0.4;
+		text-decoration: line-through;
+		background: transparent;
 	}
 
 	.preset-tag.more {
