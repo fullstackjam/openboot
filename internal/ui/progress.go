@@ -29,7 +29,7 @@ var (
 type ProgressTracker struct {
 	total      int
 	completed  int
-	currentPkg string
+	active     map[string]bool
 	width      int
 	startTime  time.Time
 	mu         sync.Mutex
@@ -40,19 +40,21 @@ func NewProgressTracker(total int) *ProgressTracker {
 		total:     total,
 		width:     40,
 		startTime: time.Now(),
+		active:    make(map[string]bool),
 	}
 }
 
 func (p *ProgressTracker) SetCurrent(pkgName string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.currentPkg = pkgName
+	p.active[pkgName] = true
 	p.render()
 }
 
 func (p *ProgressTracker) Complete(pkgName string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	delete(p.active, pkgName)
 	p.completed++
 	p.render()
 }
@@ -69,16 +71,26 @@ func (p *ProgressTracker) render() {
 
 	eta := p.estimateRemaining()
 
-	pkgDisplay := p.currentPkg
-	if len(pkgDisplay) > 20 {
-		pkgDisplay = pkgDisplay[:17] + "..."
+	activeDisplay := ""
+	activeCount := len(p.active)
+	if activeCount > 0 {
+		for pkg := range p.active {
+			if len(pkg) > 15 {
+				pkg = pkg[:12] + "..."
+			}
+			activeDisplay = pkg
+			break
+		}
+		if activeCount > 1 {
+			activeDisplay = fmt.Sprintf("%s +%d", activeDisplay, activeCount-1)
+		}
 	}
 
 	fmt.Printf("\r\033[K%s%s %s %s",
 		bar,
 		progressTextStyle.Render(status),
 		etaStyle.Render(eta),
-		currentPkgStyle.Render(pkgDisplay))
+		currentPkgStyle.Render(activeDisplay))
 }
 
 func (p *ProgressTracker) estimateRemaining() string {
