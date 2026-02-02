@@ -448,8 +448,7 @@
 				{:else if packageSearch.length >= 2}
 					<div class="packages-grid">
 						{#each searchResults as result}
-							<label class="package-item" class:selected={selectedPackages.has(result.name)}>
-								<input type="checkbox" checked={selectedPackages.has(result.name)} onchange={() => togglePackage(result.name)} />
+							<button type="button" class="package-item" class:selected={selectedPackages.has(result.name)} onclick={() => togglePackage(result.name)}>
 								<span class="check-indicator">{selectedPackages.has(result.name) ? '✓' : ''}</span>
 								<div class="package-content">
 									<div class="package-info">
@@ -460,7 +459,7 @@
 										<span class="package-desc">{result.desc.slice(0, 60)}{result.desc.length > 60 ? '...' : ''}</span>
 									{/if}
 								</div>
-							</label>
+							</button>
 						{/each}
 					</div>
 				{:else}
@@ -955,11 +954,9 @@
 		border-color: var(--accent);
 	}
 
-	.package-item input {
-		position: absolute;
-		opacity: 0;
-		width: 0;
-		height: 0;
+	.package-item {
+		text-align: left;
+		font-family: inherit;
 	}
 
 	.check-indicator {
