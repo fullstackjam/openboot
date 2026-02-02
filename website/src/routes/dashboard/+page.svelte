@@ -51,24 +51,50 @@
 		}
 	};
 
-	const EXTRA_PACKAGES: Record<string, string[]> = {
-		CLI: ['rustup', 'python', 'uv', 'deno', 'bun', 'kubectl', 'helm', 'k9s', 'terraform', 'awscli', 'argocd', 'sqlite', 'postgresql', 'redis', 'duckdb', 'mysql', 'ollama', 'llm'],
-		Apps: ['cursor', 'zed', 'iterm2', 'alacritty', 'firefox', 'microsoft-edge', 'proxyman', 'obsidian', 'slack', 'discord', 'rectangle', 'aldente', 'keka', 'iina', 'figma', 'sketch', 'imageoptim']
-	};
+	interface SearchResult {
+		name: string;
+		desc: string;
+		type: 'formula' | 'cask';
+	}
 
-	let currentCategory = $state(Object.keys(EXTRA_PACKAGES)[0]);
 	let selectedPackages = $state(new Set<string>());
 	let presetExpanded = $state(false);
 	let packageSearch = $state('');
+	let searchResults = $state<SearchResult[]>([]);
+	let searchLoading = $state(false);
+	let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-	function getFilteredPackages(): string[] {
-		const search = packageSearch.toLowerCase().trim();
-		if (!search) {
-			return EXTRA_PACKAGES[currentCategory] || [];
+	async function searchHomebrew(query: string) {
+		if (query.length < 2) {
+			searchResults = [];
+			return;
 		}
-		// Search across all categories when there's a search term
-		const allPackages = Object.values(EXTRA_PACKAGES).flat();
-		return allPackages.filter(pkg => pkg.toLowerCase().includes(search));
+
+		searchLoading = true;
+		try {
+			const response = await fetch(`/api/homebrew/search?q=${encodeURIComponent(query)}`);
+			const data = await response.json();
+			searchResults = data.results || [];
+		} catch (e) {
+			console.error('Search failed:', e);
+			searchResults = [];
+		} finally {
+			searchLoading = false;
+		}
+	}
+
+	function handleSearchInput(value: string) {
+		packageSearch = value;
+		if (searchDebounceTimer) {
+			clearTimeout(searchDebounceTimer);
+		}
+		if (value.length < 2) {
+			searchResults = [];
+			return;
+		}
+		searchDebounceTimer = setTimeout(() => {
+			searchHomebrew(value);
+		}, 300);
 	}
 
 	function getPresetPackages(preset: string): string[] {
@@ -76,15 +102,7 @@
 		return p ? [...p.cli, ...p.cask] : [];
 	}
 
-	function getAvailableExtras(preset: string): Record<string, string[]> {
-		const included = new Set(getPresetPackages(preset));
-		const result: Record<string, string[]> = {};
-		for (const [cat, pkgs] of Object.entries(EXTRA_PACKAGES)) {
-			const filtered = pkgs.filter(p => !included.has(p));
-			if (filtered.length > 0) result[cat] = filtered;
-		}
-		return result;
-	}
+
 
 	function initPackagesForPreset(preset: string) {
 		const presetPkgs = getPresetPackages(preset);
@@ -390,7 +408,7 @@
 					<div class="packages-header">
 						<span class="packages-title">Packages from "{formData.base_preset}" preset</span>
 						<button class="expand-btn" onclick={() => presetExpanded = !presetExpanded}>
-							{presetExpanded ? 'Collapse' : 'Expand'} ({selectedPackages.size}/{getPresetPackages(formData.base_preset).length + Object.values(EXTRA_PACKAGES).flat().length})
+							{presetExpanded ? 'Collapse' : 'Expand'} ({selectedPackages.size} selected)
 						</button>
 					</div>
 					<p class="packages-hint">Click to toggle. Gray = won't install.</p>
@@ -418,29 +436,33 @@
 					<input 
 						type="text" 
 						class="search-input" 
-						bind:value={packageSearch} 
-						placeholder="Search packages..." 
+						value={packageSearch}
+						oninput={(e) => handleSearchInput(e.currentTarget.value)}
+						placeholder="Search Homebrew packages..." 
 					/>
 				</div>
-				{#if !packageSearch}
-					<div class="category-tabs">
-						{#each Object.keys(EXTRA_PACKAGES) as cat}
-							<button class="category-tab" class:active={cat === currentCategory} onclick={() => (currentCategory = cat)}>
-								{cat}
-							</button>
+				{#if searchLoading}
+					<div class="search-status">Searching...</div>
+				{:else if packageSearch.length >= 2 && searchResults.length === 0}
+					<div class="search-status">No packages found for "{packageSearch}"</div>
+				{:else if packageSearch.length >= 2}
+					<div class="packages-grid">
+						{#each searchResults as result}
+							<label class="package-item" class:selected={selectedPackages.has(result.name)}>
+								<input type="checkbox" checked={selectedPackages.has(result.name)} onchange={() => togglePackage(result.name)} />
+								<div class="package-info">
+									<span class="package-name">{result.name}</span>
+									<span class="package-type">{result.type}</span>
+								</div>
+								{#if result.desc}
+									<span class="package-desc">{result.desc.slice(0, 60)}{result.desc.length > 60 ? '...' : ''}</span>
+								{/if}
+							</label>
 						{/each}
 					</div>
+				{:else}
+					<div class="search-hint">Type at least 2 characters to search Homebrew packages</div>
 				{/if}
-				<div class="packages-grid">
-					{#each getFilteredPackages() as pkg}
-						<label class="package-item" class:selected={selectedPackages.has(pkg)}>
-							<input type="checkbox" checked={selectedPackages.has(pkg)} onchange={() => togglePackage(pkg)} />
-							<span class="package-name">{pkg}</span>
-						</label>
-					{:else}
-						<div class="no-results">No packages found</div>
-					{/each}
-				</div>
 			</div>
 
 				<div class="form-group">
@@ -814,13 +836,7 @@
 		color: var(--text-muted);
 	}
 
-	.no-results {
-		grid-column: 1 / -1;
-		text-align: center;
-		color: var(--text-muted);
-		padding: 20px;
-		font-size: 0.9rem;
-	}
+
 
 	.packages-header {
 		display: flex;
@@ -896,37 +912,17 @@
 
 
 
-	.category-tabs {
-		display: flex;
-		gap: 8px;
-		flex-wrap: wrap;
-		margin-bottom: 16px;
-	}
-
-	.category-tab {
-		padding: 6px 12px;
-		background: var(--bg-tertiary);
-		border: 1px solid var(--border);
-		border-radius: 6px;
-		font-size: 0.85rem;
-		cursor: pointer;
-		transition: all 0.2s;
-		color: var(--text-primary);
-	}
-
-	.category-tab:hover {
-		border-color: var(--border-hover);
-	}
-
-	.category-tab.active {
-		background: var(--accent);
-		color: #000;
-		border-color: var(--accent);
+	.search-status,
+	.search-hint {
+		text-align: center;
+		color: var(--text-muted);
+		padding: 20px;
+		font-size: 0.9rem;
 	}
 
 	.packages-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 		gap: 8px;
 		max-height: 300px;
 		overflow-y: auto;
@@ -935,9 +931,10 @@
 
 	.package-item {
 		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 8px 12px;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 4px;
+		padding: 10px 12px;
 		background: var(--bg-tertiary);
 		border: 1px solid var(--border);
 		border-radius: 6px;
@@ -955,14 +952,38 @@
 	}
 
 	.package-item input {
-		width: 16px;
-		height: 16px;
-		accent-color: var(--accent);
+		position: absolute;
+		opacity: 0;
+		width: 0;
+		height: 0;
+	}
+
+	.package-info {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		width: 100%;
 	}
 
 	.package-name {
 		font-family: 'JetBrains Mono', monospace;
-		font-size: 0.8rem;
+		font-size: 0.85rem;
+		font-weight: 500;
+	}
+
+	.package-type {
+		font-size: 0.65rem;
+		padding: 2px 6px;
+		background: var(--bg-secondary);
+		border-radius: 3px;
+		color: var(--text-muted);
+		text-transform: uppercase;
+	}
+
+	.package-desc {
+		font-size: 0.75rem;
+		color: var(--text-muted);
+		line-height: 1.3;
 	}
 
 	@media (max-width: 600px) {
