@@ -6,6 +6,51 @@ REPO="openbootdotdev/openboot"
 BINARY_NAME="openboot"
 INSTALL_DIR="${OPENBOOT_INSTALL_DIR:-/tmp}"
 
+# Bootstrap: Install Xcode Command Line Tools if missing
+install_xcode_clt() {
+    if xcode-select -p &>/dev/null; then
+        return 0
+    fi
+    
+    echo "Installing Xcode Command Line Tools..."
+    echo "(A dialog may appear - please click 'Install')"
+    echo ""
+    
+    # Trigger the install
+    xcode-select --install 2>/dev/null || true
+    
+    # Wait for installation to complete
+    echo "Waiting for Xcode Command Line Tools installation..."
+    until xcode-select -p &>/dev/null; do
+        sleep 5
+    done
+    echo "Xcode Command Line Tools installed!"
+    echo ""
+}
+
+# Bootstrap: Install Homebrew if missing
+install_homebrew() {
+    if command -v brew &>/dev/null; then
+        return 0
+    fi
+    
+    echo "Installing Homebrew..."
+    echo ""
+    
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    
+    # Add brew to PATH for this session
+    if [[ $(uname -m) == "arm64" ]]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    else
+        eval "$(/usr/local/bin/brew shellenv)"
+    fi
+    
+    echo ""
+    echo "Homebrew installed!"
+    echo ""
+}
+
 detect_arch() {
     local arch
     arch=$(uname -m)
@@ -47,6 +92,11 @@ main() {
     local os arch url binary_path
     os=$(detect_os)
     arch=$(detect_arch)
+
+    if [[ "$os" == "darwin" ]]; then
+        install_xcode_clt
+        install_homebrew
+    fi
     url=$(get_download_url "$os" "$arch")
     binary_path="${INSTALL_DIR}/${BINARY_NAME}"
 

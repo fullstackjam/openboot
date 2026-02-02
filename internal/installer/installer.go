@@ -224,7 +224,11 @@ func stepInstallPackages(cfg *config.Config) error {
 
 	if cfg.RemoteConfig != nil {
 		for pkg := range cfg.SelectedPkgs {
-			caskPkgs = append(caskPkgs, pkg)
+			if config.IsCaskPackage(pkg) {
+				caskPkgs = append(caskPkgs, pkg)
+			} else {
+				cliPkgs = append(cliPkgs, pkg)
+			}
 		}
 	} else {
 		for _, cat := range config.Categories {

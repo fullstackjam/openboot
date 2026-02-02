@@ -69,3 +69,14 @@ func GetAllPackageNames() []string {
 	}
 	return names
 }
+
+func IsCaskPackage(name string) bool {
+	for _, cat := range Categories {
+		for _, pkg := range cat.Packages {
+			if pkg.Name == name {
+				return pkg.IsCask
+			}
+		}
+	}
+	return false
+}
