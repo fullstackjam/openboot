@@ -66,6 +66,8 @@ func init() {
 	rootCmd.Flags().BoolVar(&cfg.Resume, "resume", false, "Resume from last incomplete step")
 
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(updateCmd)
+	rootCmd.AddCommand(doctorCmd)
 }
 
 var versionCmd = &cobra.Command{

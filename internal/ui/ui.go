@@ -13,6 +13,9 @@ var (
 	accent    = lipgloss.Color("#22c55e")
 	subtle    = lipgloss.Color("#666666")
 	highlight = lipgloss.Color("#60a5fa")
+	warning   = lipgloss.Color("#eab308")
+	danger    = lipgloss.Color("#ef4444")
+	info      = lipgloss.Color("#06b6d4")
 
 	titleStyle = lipgloss.NewStyle().
 			Foreground(accent).
@@ -23,11 +26,32 @@ var (
 			Foreground(accent)
 
 	errorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#ef4444"))
+			Foreground(danger)
 
 	mutedStyle = lipgloss.NewStyle().
 			Foreground(subtle)
+
+	greenStyle  = lipgloss.NewStyle().Foreground(accent)
+	yellowStyle = lipgloss.NewStyle().Foreground(warning)
+	redStyle    = lipgloss.NewStyle().Foreground(danger)
+	cyanStyle   = lipgloss.NewStyle().Foreground(info)
 )
+
+func Green(text string) string {
+	return greenStyle.Render(text)
+}
+
+func Yellow(text string) string {
+	return yellowStyle.Render(text)
+}
+
+func Red(text string) string {
+	return redStyle.Render(text)
+}
+
+func Cyan(text string) string {
+	return cyanStyle.Render(text)
+}
 
 func Header(text string) {
 	fmt.Println(titleStyle.Render("=== " + text + " ==="))

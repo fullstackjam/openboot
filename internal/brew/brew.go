@@ -1,12 +1,67 @@
 package brew
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 
 	"github.com/openbootdotdev/openboot/internal/ui"
 )
+
+type OutdatedPackage struct {
+	Name    string
+	Current string
+	Latest  string
+}
+
+func IsInstalled() bool {
+	_, err := exec.LookPath("brew")
+	return err == nil
+}
+
+func ListOutdated() ([]OutdatedPackage, error) {
+	cmd := exec.Command("brew", "outdated", "--json")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Formulae []struct {
+			Name             string `json:"name"`
+			InstalledVersion string `json:"installed_versions"`
+			CurrentVersion   string `json:"current_version"`
+		} `json:"formulae"`
+		Casks []struct {
+			Name             string `json:"name"`
+			InstalledVersion string `json:"installed_versions"`
+			CurrentVersion   string `json:"current_version"`
+		} `json:"casks"`
+	}
+
+	if err := json.Unmarshal(output, &result); err != nil {
+		return nil, err
+	}
+
+	var outdated []OutdatedPackage
+	for _, f := range result.Formulae {
+		outdated = append(outdated, OutdatedPackage{
+			Name:    f.Name,
+			Current: f.InstalledVersion,
+			Latest:  f.CurrentVersion,
+		})
+	}
+	for _, c := range result.Casks {
+		outdated = append(outdated, OutdatedPackage{
+			Name:    c.Name + " (cask)",
+			Current: c.InstalledVersion,
+			Latest:  c.CurrentVersion,
+		})
+	}
+
+	return outdated, nil
+}
 
 func Install(packages []string, dryRun bool) error {
 	if len(packages) == 0 {
