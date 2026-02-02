@@ -27,21 +27,46 @@ var (
 )
 
 type ProgressTracker struct {
-	total      int
-	completed  int
-	active     map[string]bool
-	width      int
-	startTime  time.Time
-	mu         sync.Mutex
+	total       int
+	completed   int
+	active      map[string]bool
+	width       int
+	startTime   time.Time
+	mu          sync.Mutex
+	spinnerIdx  int
+	spinnerStop chan bool
 }
 
+var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
 func NewProgressTracker(total int) *ProgressTracker {
-	return &ProgressTracker{
-		total:     total,
-		width:     40,
-		startTime: time.Now(),
-		active:    make(map[string]bool),
+	p := &ProgressTracker{
+		total:       total,
+		width:       40,
+		startTime:   time.Now(),
+		active:      make(map[string]bool),
+		spinnerStop: make(chan bool),
 	}
+
+	go func() {
+		ticker := time.NewTicker(80 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-p.spinnerStop:
+				return
+			case <-ticker.C:
+				p.mu.Lock()
+				p.spinnerIdx = (p.spinnerIdx + 1) % len(spinnerFrames)
+				if len(p.active) > 0 {
+					p.render()
+				}
+				p.mu.Unlock()
+			}
+		}
+	}()
+
+	return p
 }
 
 func (p *ProgressTracker) SetCurrent(pkgName string) {
@@ -71,9 +96,11 @@ func (p *ProgressTracker) render() {
 
 	eta := p.estimateRemaining()
 
+	spinner := ""
 	activeDisplay := ""
 	activeCount := len(p.active)
 	if activeCount > 0 {
+		spinner = currentPkgStyle.Render(spinnerFrames[p.spinnerIdx]) + " "
 		for pkg := range p.active {
 			if len(pkg) > 15 {
 				pkg = pkg[:12] + "..."
@@ -86,10 +113,11 @@ func (p *ProgressTracker) render() {
 		}
 	}
 
-	fmt.Printf("\r\033[K%s%s %s %s",
+	fmt.Printf("\r\033[K%s%s %s %s%s",
 		bar,
 		progressTextStyle.Render(status),
 		etaStyle.Render(eta),
+		spinner,
 		currentPkgStyle.Render(activeDisplay))
 }
 
@@ -120,6 +148,8 @@ func (p *ProgressTracker) estimateRemaining() string {
 }
 
 func (p *ProgressTracker) Finish() {
+	close(p.spinnerStop)
+
 	p.mu.Lock()
 	defer p.mu.Unlock()
 

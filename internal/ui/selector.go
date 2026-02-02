@@ -39,14 +39,17 @@ var (
 )
 
 type SelectorModel struct {
-	categories   []config.Category
-	selected     map[string]bool
-	activeTab    int
-	cursor       int
-	confirmed    bool
-	width        int
-	height       int
-	scrollOffset int
+	categories    []config.Category
+	selected      map[string]bool
+	activeTab     int
+	cursor        int
+	confirmed     bool
+	width         int
+	height        int
+	scrollOffset  int
+	searchMode    bool
+	searchQuery   string
+	filteredPkgs  []config.Package
 }
 
 func NewSelector(presetName string) SelectorModel {
@@ -69,9 +72,56 @@ func (m SelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 	case tea.KeyMsg:
+		if m.searchMode {
+			switch msg.String() {
+			case "esc":
+				m.searchMode = false
+				m.searchQuery = ""
+				m.filteredPkgs = nil
+				m.cursor = 0
+				m.scrollOffset = 0
+			case "enter":
+				if len(m.filteredPkgs) > 0 && m.cursor < len(m.filteredPkgs) {
+					pkg := m.filteredPkgs[m.cursor]
+					m.selected[pkg.Name] = !m.selected[pkg.Name]
+				}
+			case "backspace":
+				if len(m.searchQuery) > 0 {
+					m.searchQuery = m.searchQuery[:len(m.searchQuery)-1]
+					m.updateFilteredPackages()
+				}
+			case "up":
+				if m.cursor > 0 {
+					m.cursor--
+				}
+			case "down":
+				if m.cursor < len(m.filteredPkgs)-1 {
+					m.cursor++
+				}
+			case " ":
+				if len(m.filteredPkgs) > 0 && m.cursor < len(m.filteredPkgs) {
+					pkg := m.filteredPkgs[m.cursor]
+					m.selected[pkg.Name] = !m.selected[pkg.Name]
+				}
+			default:
+				if len(msg.String()) == 1 && msg.String() >= " " {
+					m.searchQuery += msg.String()
+					m.updateFilteredPackages()
+					m.cursor = 0
+				}
+			}
+			return m, nil
+		}
+
 		switch {
 		case key.Matches(msg, keys.Quit):
 			return m, tea.Quit
+
+		case msg.String() == "/":
+			m.searchMode = true
+			m.searchQuery = ""
+			m.cursor = 0
+			m.updateFilteredPackages()
 
 		case key.Matches(msg, keys.Tab), key.Matches(msg, keys.Right):
 			m.activeTab = (m.activeTab + 1) % len(m.categories)
@@ -130,6 +180,25 @@ func (m SelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *SelectorModel) updateFilteredPackages() {
+	if m.searchQuery == "" {
+		m.filteredPkgs = nil
+		return
+	}
+
+	query := strings.ToLower(m.searchQuery)
+	m.filteredPkgs = nil
+
+	for _, cat := range m.categories {
+		for _, pkg := range cat.Packages {
+			if strings.Contains(strings.ToLower(pkg.Name), query) ||
+				strings.Contains(strings.ToLower(pkg.Description), query) {
+				m.filteredPkgs = append(m.filteredPkgs, pkg)
+			}
+		}
+	}
+}
+
 func (m SelectorModel) getVisibleItems() int {
 	if m.height == 0 {
 		return 15
@@ -146,6 +215,10 @@ func (m SelectorModel) getVisibleItems() int {
 
 func (m SelectorModel) View() string {
 	var lines []string
+
+	if m.searchMode {
+		return m.viewSearch()
+	}
 
 	var tabs []string
 	for i, cat := range m.categories {
@@ -213,7 +286,67 @@ func (m SelectorModel) View() string {
 	lines = append(lines, "")
 	lines = append(lines, countStyle.Render(fmt.Sprintf("Selected: %d packages", totalSelected)))
 	lines = append(lines, "")
-	lines = append(lines, helpStyle.Render("Tab/←→: switch category • ↑↓: navigate • Space: toggle • a: select all • Enter: confirm • q: quit"))
+	lines = append(lines, helpStyle.Render("Tab/←→: switch • ↑↓: navigate • Space: toggle • /: search • a: all • Enter: confirm • q: quit"))
+
+	return strings.Join(lines, "\n")
+}
+
+func (m SelectorModel) viewSearch() string {
+	var lines []string
+
+	searchBox := fmt.Sprintf("Search: %s▌", m.searchQuery)
+	lines = append(lines, activeTabStyle.Render(searchBox))
+	lines = append(lines, "")
+
+	visibleItems := m.getVisibleItems()
+
+	if len(m.filteredPkgs) == 0 {
+		if m.searchQuery == "" {
+			lines = append(lines, descStyle.Render("Type to search packages..."))
+		} else {
+			lines = append(lines, descStyle.Render("No packages found"))
+		}
+	} else {
+		endIdx := visibleItems
+		if endIdx > len(m.filteredPkgs) {
+			endIdx = len(m.filteredPkgs)
+		}
+
+		for i := 0; i < endIdx; i++ {
+			pkg := m.filteredPkgs[i]
+			cursor := "  "
+			if i == m.cursor {
+				cursor = "> "
+			}
+
+			checkbox := "[ ]"
+			style := itemStyle
+			if m.selected[pkg.Name] {
+				checkbox = "[✓]"
+				style = selectedStyle
+			}
+
+			line := fmt.Sprintf("%s%s %s %s", cursor, checkbox, style.Render(pkg.Name), descStyle.Render(pkg.Description))
+			lines = append(lines, line)
+		}
+	}
+
+	clearLine := strings.Repeat(" ", 80)
+	for len(lines) < visibleItems+2 {
+		lines = append(lines, clearLine)
+	}
+
+	totalSelected := 0
+	for _, v := range m.selected {
+		if v {
+			totalSelected++
+		}
+	}
+
+	lines = append(lines, "")
+	lines = append(lines, countStyle.Render(fmt.Sprintf("Selected: %d packages • Found: %d", totalSelected, len(m.filteredPkgs))))
+	lines = append(lines, "")
+	lines = append(lines, helpStyle.Render("↑↓: navigate • Space: toggle • Esc: exit search • Enter: toggle selected"))
 
 	return strings.Join(lines, "\n")
 }
