@@ -29,14 +29,14 @@ func ListOutdated() ([]OutdatedPackage, error) {
 
 	var result struct {
 		Formulae []struct {
-			Name             string `json:"name"`
-			InstalledVersion string `json:"installed_versions"`
-			CurrentVersion   string `json:"current_version"`
+			Name              string   `json:"name"`
+			InstalledVersions []string `json:"installed_versions"`
+			CurrentVersion    string   `json:"current_version"`
 		} `json:"formulae"`
 		Casks []struct {
-			Name             string `json:"name"`
-			InstalledVersion string `json:"installed_versions"`
-			CurrentVersion   string `json:"current_version"`
+			Name              string   `json:"name"`
+			InstalledVersions []string `json:"installed_versions"`
+			CurrentVersion    string   `json:"current_version"`
 		} `json:"casks"`
 	}
 
@@ -46,16 +46,24 @@ func ListOutdated() ([]OutdatedPackage, error) {
 
 	var outdated []OutdatedPackage
 	for _, f := range result.Formulae {
+		current := ""
+		if len(f.InstalledVersions) > 0 {
+			current = f.InstalledVersions[0]
+		}
 		outdated = append(outdated, OutdatedPackage{
 			Name:    f.Name,
-			Current: f.InstalledVersion,
+			Current: current,
 			Latest:  f.CurrentVersion,
 		})
 	}
 	for _, c := range result.Casks {
+		current := ""
+		if len(c.InstalledVersions) > 0 {
+			current = c.InstalledVersions[0]
+		}
 		outdated = append(outdated, OutdatedPackage{
 			Name:    c.Name + " (cask)",
-			Current: c.InstalledVersion,
+			Current: current,
 			Latest:  c.CurrentVersion,
 		})
 	}
