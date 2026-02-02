@@ -50,7 +50,7 @@ fi
 
 cd "\$DOTFILES_DIR"
 echo "Deploying dotfiles with stow..."
-stow -v --target="\$HOME" */ 2>/dev/null || stow -v --target="\$HOME" git ssh zsh npm 2>/dev/null || true
+stow -v --target="\$HOME" */ 2>/dev/null || stow -v --target="\$HOME" git ssh zsh 2>/dev/null || true
 `
 			: ''
 	}
