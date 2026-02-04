@@ -84,16 +84,26 @@ get_download_url() {
 }
 
 main() {
+    local snapshot_mode=false
+    if [[ "${1:-}" == "snapshot" ]]; then
+        snapshot_mode=true
+    fi
+
     echo ""
-    echo "OpenBoot Installer"
-    echo "=================="
+    if [[ "$snapshot_mode" == true ]]; then
+        echo "OpenBoot Snapshot"
+        echo "================="
+    else
+        echo "OpenBoot Installer"
+        echo "=================="
+    fi
     echo ""
 
     local os arch url binary_path
     os=$(detect_os)
     arch=$(detect_arch)
 
-    if [[ "$os" == "darwin" ]]; then
+    if [[ "$os" == "darwin" && "$snapshot_mode" == false ]]; then
         echo "Some installations require admin privileges."
         sudo -v
         
