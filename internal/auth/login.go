@@ -140,6 +140,9 @@ func pollForApproval(apiBase, codeID string) (*cliPollResponse, error) {
 			if result.Status == "approved" {
 				return &result, nil
 			}
+			if result.Status == "expired" {
+				return nil, fmt.Errorf("authorization code expired or already used")
+			}
 		}
 	}
 }
