@@ -77,7 +77,14 @@ func LoginInteractive(apiBase string) (*StoredAuth, error) {
 
 	expiresAt, err := time.Parse(time.RFC3339, result.ExpiresAt)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse expiration time: %w", err)
+		// Fallback for SQLite datetime format (YYYY-MM-DD HH:MM:SS)
+		// Assume UTC if no timezone info
+		t, err2 := time.Parse("2006-01-02 15:04:05", result.ExpiresAt)
+		if err2 == nil {
+			expiresAt = t
+		} else {
+			return nil, fmt.Errorf("failed to parse expiration time '%s': %w (also tried SQLite format: %v)", result.ExpiresAt, err, err2)
+		}
 	}
 
 	stored := &StoredAuth{
