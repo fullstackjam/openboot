@@ -1,0 +1,193 @@
+package ui
+
+import (
+	"fmt"
+	"os"
+	"sync"
+	"time"
+
+	"github.com/charmbracelet/lipgloss"
+	"github.com/openbootdotdev/openboot/internal/snapshot"
+	"github.com/openbootdotdev/openboot/internal/system"
+)
+
+var (
+	scanCheckStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#22c55e"))
+
+	scanErrorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#ef4444"))
+
+	scanActiveStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#06b6d4"))
+
+	scanPendingStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#666666"))
+
+	scanCountStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#888888"))
+)
+
+var scanSpinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+type stepState struct {
+	name   string
+	status string
+	count  int
+}
+
+// ScanProgress is a stderr-based multi-line progress renderer for snapshot scanning.
+type ScanProgress struct {
+	steps       []stepState
+	totalSteps  int
+	spinnerIdx  int
+	spinnerStop chan bool
+	mu          sync.Mutex
+	isTTY       bool
+	rendered    bool
+}
+
+// NewScanProgress creates a ScanProgress with an optional TTY spinner goroutine.
+func NewScanProgress(totalSteps int) *ScanProgress {
+	steps := make([]stepState, totalSteps)
+	for i := range steps {
+		steps[i].status = "pending"
+	}
+
+	sp := &ScanProgress{
+		steps:       steps,
+		totalSteps:  totalSteps,
+		spinnerStop: make(chan bool),
+		isTTY:       system.HasTTY(),
+	}
+
+	if sp.isTTY {
+		go func() {
+			ticker := time.NewTicker(80 * time.Millisecond)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-sp.spinnerStop:
+					return
+				case <-ticker.C:
+					sp.mu.Lock()
+					sp.spinnerIdx = (sp.spinnerIdx + 1) % len(scanSpinnerFrames)
+					hasActive := false
+					for _, s := range sp.steps {
+						if s.status == "scanning" {
+							hasActive = true
+							break
+						}
+					}
+					if hasActive {
+						sp.render()
+					}
+					sp.mu.Unlock()
+				}
+			}
+		}()
+	}
+
+	return sp
+}
+
+// Update applies a ScanStep to the display.
+func (sp *ScanProgress) Update(step snapshot.ScanStep) {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+
+	if step.Index < 0 || step.Index >= sp.totalSteps {
+		return
+	}
+
+	sp.steps[step.Index].name = step.Name
+	sp.steps[step.Index].status = step.Status
+	sp.steps[step.Index].count = step.Count
+
+	sp.render()
+}
+
+// Finish stops the spinner and renders the final state.
+func (sp *ScanProgress) Finish() {
+	close(sp.spinnerStop)
+
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+
+	sp.render()
+	fmt.Fprintf(os.Stderr, "\n")
+}
+
+func (sp *ScanProgress) render() {
+	if sp.isTTY {
+		sp.renderTTY()
+	} else {
+		sp.renderPlain()
+	}
+}
+
+func (sp *ScanProgress) renderTTY() {
+	if sp.rendered {
+		fmt.Fprintf(os.Stderr, "\033[%dA", sp.totalSteps)
+	} else {
+		fmt.Fprintf(os.Stderr, "  Scanning your Mac...\n")
+		sp.rendered = true
+	}
+
+	for _, s := range sp.steps {
+		fmt.Fprintf(os.Stderr, "\033[K")
+
+		switch s.status {
+		case "done":
+			countText := formatStepCount(s.count)
+			fmt.Fprintf(os.Stderr, "  %s %s\n",
+				scanCheckStyle.Render("✓ "+s.name),
+				scanCountStyle.Render(countText))
+		case "error":
+			fmt.Fprintf(os.Stderr, "  %s %s\n",
+				scanErrorStyle.Render("✗ "+s.name),
+				scanCountStyle.Render("failed"))
+		case "scanning":
+			spinner := scanSpinnerFrames[sp.spinnerIdx]
+			fmt.Fprintf(os.Stderr, "  %s %s\n",
+				scanActiveStyle.Render(spinner+" "+s.name),
+				scanCountStyle.Render("scanning..."))
+		default:
+			name := s.name
+			if name == "" {
+				name = "..."
+			}
+			fmt.Fprintf(os.Stderr, "  %s\n",
+				scanPendingStyle.Render("  "+name))
+		}
+	}
+}
+
+func (sp *ScanProgress) renderPlain() {
+	for i, s := range sp.steps {
+		switch s.status {
+		case "done":
+			if !sp.rendered {
+				fmt.Fprintf(os.Stderr, "  Scanning your Mac...\n")
+				sp.rendered = true
+			}
+			countText := formatStepCount(s.count)
+			fmt.Fprintf(os.Stderr, "  ✓ %s (%s)\n", s.name, countText)
+			sp.steps[i].status = "done_printed"
+		case "error":
+			if !sp.rendered {
+				fmt.Fprintf(os.Stderr, "  Scanning your Mac...\n")
+				sp.rendered = true
+			}
+			fmt.Fprintf(os.Stderr, "  ✗ %s (failed)\n", s.name)
+			sp.steps[i].status = "error_printed"
+		}
+	}
+}
+
+func formatStepCount(count int) string {
+	if count == 1 {
+		return "1 found"
+	}
+	return fmt.Sprintf("%d found", count)
+}

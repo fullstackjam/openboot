@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -54,23 +55,17 @@ func runSnapshot(cmd *cobra.Command) error {
 	jsonFlag, _ := cmd.Flags().GetBool("json")
 	dryRunFlag, _ := cmd.Flags().GetBool("dry-run")
 
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, snapTitleStyle.Render("=== Scanning your Mac... ==="))
-	fmt.Fprintln(os.Stderr)
+	// --- CAPTURE PHASE ---
 
-	fmt.Fprintf(os.Stderr, "  Capturing environment...\n")
-	snap, err := snapshot.Capture()
-	if err != nil {
-		return fmt.Errorf("failed to capture snapshot: %w", err)
-	}
-
-	catalogMatch := snapshot.MatchPackages(snap)
-	snap.CatalogMatch = *catalogMatch
-	snap.MatchedPreset = snapshot.DetectBestPreset(snap)
-
-	showSnapshotPreview(snap)
-
+	// For --json: use silent Capture() (no progress UI, stdout must be clean)
 	if jsonFlag {
+		snap, err := snapshot.Capture()
+		if err != nil {
+			return err
+		}
+		catalogMatch := snapshot.MatchPackages(snap)
+		snap.CatalogMatch = *catalogMatch
+		snap.MatchedPreset = snapshot.DetectBestPreset(snap)
 		data, err := json.MarshalIndent(snap, "", "  ")
 		if err != nil {
 			return fmt.Errorf("failed to marshal snapshot: %w", err)
@@ -79,25 +74,95 @@ func runSnapshot(cmd *cobra.Command) error {
 		return nil
 	}
 
+	// Interactive/local/dry-run: use progress UI
+	snap, err := captureWithUI()
+	if err != nil {
+		return err
+	}
+
+	// Do matching
+	catalogMatch := snapshot.MatchPackages(snap)
+	snap.CatalogMatch = *catalogMatch
+	snap.MatchedPreset = snapshot.DetectBestPreset(snap)
+
 	if localFlag {
 		path, err := snapshot.SaveLocal(snap)
 		if err != nil {
 			return fmt.Errorf("failed to save snapshot: %w", err)
 		}
 		fmt.Fprintln(os.Stderr)
-		fmt.Fprintln(os.Stderr, snapSuccessStyle.Render(fmt.Sprintf("✓ Snapshot saved to %s", path)))
+		fmt.Fprintln(os.Stderr, snapSuccessStyle.Render("✓ Snapshot saved to "+path))
 		fmt.Fprintln(os.Stderr)
 		return nil
 	}
 
 	if dryRunFlag {
+		showSnapshotPreview(snap)
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, snapMutedStyle.Render("Dry run — no changes made"))
 		fmt.Fprintln(os.Stderr)
 		return nil
 	}
 
-	return uploadSnapshot(snap)
+	// --- EDITOR PHASE ---
+	edited, confirmed, err := ui.RunSnapshotEditor(snap)
+	if err != nil {
+		return err
+	}
+	if !confirmed {
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr, snapMutedStyle.Render("Snapshot cancelled."))
+		fmt.Fprintln(os.Stderr)
+		return nil
+	}
+
+	// --- CONFIRM PHASE ---
+	fmt.Fprintln(os.Stderr)
+	upload, err := ui.Confirm("Upload this snapshot to openboot.dev?", true)
+	if err != nil {
+		return err
+	}
+
+	if !upload {
+		// Offer local save as fallback
+		saveLocal, err := ui.Confirm("Save snapshot locally instead?", true)
+		if err != nil {
+			return err
+		}
+		if saveLocal {
+			path, err := snapshot.SaveLocal(edited)
+			if err != nil {
+				return fmt.Errorf("failed to save snapshot: %w", err)
+			}
+			fmt.Fprintln(os.Stderr, snapSuccessStyle.Render("✓ Snapshot saved to "+path))
+		} else {
+			fmt.Fprintln(os.Stderr, snapMutedStyle.Render("Snapshot discarded."))
+		}
+		fmt.Fprintln(os.Stderr)
+		return nil
+	}
+
+	// --- UPLOAD PHASE ---
+	return uploadSnapshot(edited)
+}
+
+// captureWithUI runs CaptureWithProgress with the ScanProgress renderer.
+func captureWithUI() (*snapshot.Snapshot, error) {
+	fmt.Fprintln(os.Stderr)
+
+	progress := ui.NewScanProgress(7)
+
+	snap, err := snapshot.CaptureWithProgress(func(step snapshot.ScanStep) {
+		progress.Update(step)
+	})
+
+	progress.Finish()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to capture snapshot: %w", err)
+	}
+
+	return snap, nil
 }
 
 func uploadSnapshot(snap *snapshot.Snapshot) error {
@@ -166,10 +231,23 @@ func uploadSnapshot(snap *snapshot.Snapshot) error {
 		return fmt.Errorf("failed to parse upload response: %w", err)
 	}
 
+	// --- SUCCESS SCREEN ---
+	configURL := fmt.Sprintf("%s/%s/%s", apiBase, stored.Username, result.Slug)
+	installURL := fmt.Sprintf("curl -fsSL %s/%s/%s/install | bash", apiBase, stored.Username, result.Slug)
+
 	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, snapSuccessStyle.Render(
-		fmt.Sprintf("✓ Config uploaded! View at: %s/%s/%s", apiBase, stored.Username, result.Slug),
-	))
+	fmt.Fprintln(os.Stderr, snapSuccessStyle.Render("✓ Config uploaded successfully!"))
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, snapBoldStyle.Render("  View your config:"))
+	fmt.Fprintf(os.Stderr, "    %s\n", configURL)
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, snapBoldStyle.Render("  Share with others:"))
+	fmt.Fprintf(os.Stderr, "    %s\n", installURL)
+	fmt.Fprintln(os.Stderr)
+
+	// Auto-open browser
+	exec.Command("open", configURL).Start()
+	fmt.Fprintln(os.Stderr, snapMutedStyle.Render("  Opening in browser..."))
 	fmt.Fprintln(os.Stderr)
 
 	return nil
