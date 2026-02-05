@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,6 +12,14 @@ import (
 
 	"github.com/openbootdotdev/openboot/internal/ui"
 )
+
+// httpClient uses HTTP/1.1 to avoid HTTP/2 compatibility issues with Cloudflare Workers
+var httpClient = &http.Client{
+	Transport: &http.Transport{
+		TLSNextProto: make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
+	},
+	Timeout: 30 * time.Second,
+}
 
 const DefaultAPIBase = "https://openboot.dev"
 
@@ -92,11 +101,13 @@ func startAuthSession(apiBase, code string) (string, error) {
 		return "", fmt.Errorf("failed to marshal start request: %w", err)
 	}
 
-	resp, err := http.Post(
-		fmt.Sprintf("%s/api/auth/cli/start", apiBase),
-		"application/json",
-		bytes.NewReader(body),
-	)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/auth/cli/start", apiBase), bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("failed to create start request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to start auth session: %w", err)
 	}
@@ -125,7 +136,7 @@ func pollForApproval(apiBase, codeID string) (*cliPollResponse, error) {
 		case <-timeout:
 			return nil, fmt.Errorf("authentication timed out after 5 minutes")
 		case <-ticker.C:
-			resp, err := http.Get(pollURL)
+			resp, err := httpClient.Get(pollURL)
 			if err != nil {
 				continue
 			}
