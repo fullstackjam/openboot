@@ -215,41 +215,38 @@ func InstallWithProgress(cliPkgs, caskPkgs []string, dryRun bool) error {
 		return nil
 	}
 
-	progress := ui.NewStickyProgress(total)
-	progress.Start()
-
 	installedFormulae, installedCasks, _ := GetInstalledPackages()
 
 	var newCli []string
 	for _, p := range cliPkgs {
-		progress.SetCurrent(p)
-		if installedFormulae[p] {
-			progress.PrintLine("  ✔ %s (already installed)", p)
-			progress.Increment()
-		} else {
+		if !installedFormulae[p] {
 			newCli = append(newCli, p)
 		}
 	}
 	var newCask []string
 	for _, p := range caskPkgs {
-		progress.SetCurrent(p)
-		if installedCasks[p] {
-			progress.PrintLine("  ✔ %s (already installed)", p)
-			progress.Increment()
-		} else {
+		if !installedCasks[p] {
 			newCask = append(newCask, p)
 		}
 	}
 
+	skipped := total - len(newCli) - len(newCask)
+	if skipped > 0 {
+		ui.Muted(fmt.Sprintf("  %d already installed, %d to install", skipped, len(newCli)+len(newCask)))
+		fmt.Println()
+	}
+
 	if len(newCli)+len(newCask) == 0 {
-		progress.Finish()
+		ui.Success("All packages already installed!")
 		return nil
 	}
 
 	if err := PreInstallChecks(len(newCli) + len(newCask)); err != nil {
-		progress.Finish()
 		return err
 	}
+
+	progress := ui.NewStickyProgress(len(newCli) + len(newCask))
+	progress.Start()
 
 	var allFailed []failedJob
 
