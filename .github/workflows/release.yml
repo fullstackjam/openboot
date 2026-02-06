@@ -23,10 +23,6 @@ jobs:
             arch: amd64
           - os: darwin
             arch: arm64
-          - os: linux
-            arch: amd64
-          - os: linux
-            arch: arm64
 
     steps:
       - name: Checkout
@@ -79,8 +75,6 @@ jobs:
           files: |
             artifacts/openboot-darwin-amd64/openboot-darwin-amd64
             artifacts/openboot-darwin-arm64/openboot-darwin-arm64
-            artifacts/openboot-linux-amd64/openboot-linux-amd64
-            artifacts/openboot-linux-arm64/openboot-linux-arm64
           body: |
             ## Installation
 
@@ -94,5 +88,3 @@ jobs:
             |----------|--------------|----------|
             | macOS | Apple Silicon (M1/M2/M3) | `openboot-darwin-arm64` |
             | macOS | Intel | `openboot-darwin-amd64` |
-            | Linux | x86_64 | `openboot-linux-amd64` |
-            | Linux | ARM64 | `openboot-linux-arm64` |
