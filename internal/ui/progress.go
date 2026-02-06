@@ -115,13 +115,13 @@ func (p *ProgressTracker) render() {
 				break
 			}
 		}
-		if len(activeDisplay) > 12 {
-			activeDisplay = activeDisplay[:12] + "..."
+		if len(activeDisplay) > 20 {
+			activeDisplay = activeDisplay[:17] + "..."
 		}
 		if activeCount > 1 {
-			activeDisplay = fmt.Sprintf("%-15s +%d", activeDisplay, activeCount-1)
+			activeDisplay = fmt.Sprintf("%-20s +%d", activeDisplay, activeCount-1)
 		} else {
-			activeDisplay = fmt.Sprintf("%-15s", activeDisplay)
+			activeDisplay = fmt.Sprintf("%-20s", activeDisplay)
 		}
 	}
 
