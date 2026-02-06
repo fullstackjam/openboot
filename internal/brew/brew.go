@@ -221,12 +221,11 @@ func InstallWithProgress(cliPkgs, caskPkgs []string, dryRun bool) error {
 
 	progress := ui.NewStickyProgress(total)
 	progress.Start()
-	scrollOut := ui.NewScrollWriter(progress)
 
 	var allFailed []failedJob
 
 	if len(cliPkgs) > 0 {
-		failed := runParallelInstallWithProgress(cliPkgs, progress, scrollOut)
+		failed := runParallelInstallWithProgress(cliPkgs, progress)
 		allFailed = append(allFailed, failed...)
 	}
 
@@ -283,7 +282,7 @@ type failedJob struct {
 	errMsg string
 }
 
-func runParallelInstallWithProgress(pkgs []string, progress *ui.StickyProgress, scrollOut *ui.ScrollWriter) []failedJob {
+func runParallelInstallWithProgress(pkgs []string, progress *ui.StickyProgress) []failedJob {
 	if len(pkgs) == 0 {
 		return nil
 	}
@@ -310,9 +309,9 @@ func runParallelInstallWithProgress(pkgs []string, progress *ui.StickyProgress, 
 				progress.SetCurrent(job.name)
 				errMsg := installFormulaWithError(job.name)
 				if errMsg == "" {
-					fmt.Fprintf(scrollOut, "  ✔ %s\n", job.name)
+					progress.PrintLine("  ✔ %s", job.name)
 				} else {
-					fmt.Fprintf(scrollOut, "  ✗ %s (%s)\n", job.name, errMsg)
+					progress.PrintLine("  ✗ %s (%s)", job.name, errMsg)
 				}
 				results <- installResult{name: job.name, failed: errMsg != "", isCask: job.isCask, errMsg: errMsg}
 				progress.Increment()
