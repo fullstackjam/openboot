@@ -80,3 +80,13 @@ func IsCaskPackage(name string) bool {
 	}
 	return false
 }
+
+func IsTapPackage(name string) bool {
+	parts := 0
+	for _, c := range name {
+		if c == '/' {
+			parts++
+		}
+	}
+	return parts == 2
+}
