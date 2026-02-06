@@ -474,6 +474,9 @@ func DoctorDiagnose() ([]string, error) {
 }
 
 func RefreshSudo() {
+	if exec.Command("sudo", "-n", "true").Run() == nil {
+		return
+	}
 	cmd := exec.Command("sudo", "-v")
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -503,7 +506,6 @@ func PreInstallChecks(packageCount int, hasCasks bool) error {
 	}
 
 	if hasCasks {
-		ui.Info("Some GUI apps may require admin password...")
 		RefreshSudo()
 	}
 
