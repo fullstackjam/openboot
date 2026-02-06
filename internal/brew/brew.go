@@ -258,25 +258,14 @@ func InstallWithProgress(cliPkgs, caskPkgs []string, dryRun bool) error {
 	if len(newCask) > 0 {
 		for _, pkg := range newCask {
 			progress.SetCurrent(pkg)
-			progress.PauseForInteractive()
-			fmt.Printf("  Installing %s...\n", pkg)
-			cmd := exec.Command("brew", "install", "--cask", pkg)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			cmd.Stdin = os.Stdin
-			if err := cmd.Run(); err != nil {
-				cmd2 := exec.Command("brew", "install", pkg)
-				cmd2.Stdout = os.Stdout
-				cmd2.Stderr = os.Stderr
-				cmd2.Stdin = os.Stdin
-				if err2 := cmd2.Run(); err2 != nil {
-					allFailed = append(allFailed, failedJob{
-						installJob: installJob{name: pkg, isCask: true},
-						errMsg:     "install failed",
-					})
-				}
+			progress.PrintLine("  Installing %s...", pkg)
+			errMsg := installCaskWithProgress(pkg, progress)
+			if errMsg != "" {
+				allFailed = append(allFailed, failedJob{
+					installJob: installJob{name: pkg, isCask: true},
+					errMsg:     errMsg,
+				})
 			}
-			progress.ResumeAfterInteractive()
 			progress.Increment()
 		}
 	}
@@ -368,6 +357,39 @@ func runParallelInstallWithProgress(pkgs []string, progress *ui.StickyProgress) 
 	}
 
 	return failed
+}
+
+func installCaskWithProgress(pkg string, progress *ui.StickyProgress) string {
+	cmd := exec.Command("brew", "install", "--cask", pkg)
+	cmd.Stdin = os.Stdin
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		outputStr := string(output)
+		if strings.Contains(strings.ToLower(outputStr), "try again using") || strings.Contains(strings.ToLower(outputStr), "not a cask") {
+			cmd2 := exec.Command("brew", "install", pkg)
+			cmd2.Stdin = os.Stdin
+			output2, err2 := cmd2.CombinedOutput()
+			if err2 != nil {
+				printBrewOutput(string(output2), progress)
+				return parseBrewError(string(output2))
+			}
+			printBrewOutput(string(output2), progress)
+			return ""
+		}
+		printBrewOutput(outputStr, progress)
+		return parseBrewError(outputStr)
+	}
+	printBrewOutput(string(output), progress)
+	return ""
+}
+
+func printBrewOutput(output string, progress *ui.StickyProgress) {
+	for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			progress.PrintLine("    %s", line)
+		}
+	}
 }
 
 func installFormulaWithError(pkg string) string {
