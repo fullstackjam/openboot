@@ -1,9 +1,52 @@
 # OpenBoot
 
-> One-line macOS development environment setup
+> Set up your Mac in one command — not one afternoon.
 
 [![Release](https://img.shields.io/github/v/release/openbootdotdev/openboot)](https://github.com/openbootdotdev/openboot/releases)
 [![License](https://img.shields.io/github/license/openbootdotdev/openboot)](LICENSE)
+
+<p align="center">
+  <img src="demo.svg" alt="OpenBoot Demo" width="800" />
+</p>
+
+```bash
+curl -fsSL openboot.dev/install | bash
+```
+
+OpenBoot bootstraps your entire macOS development environment in minutes — Homebrew packages, GUI apps, dotfiles, Oh-My-Zsh, and macOS preferences — through an interactive TUI. No config files to write. No manual steps. Just one command.
+
+## Why OpenBoot?
+
+Setting up a new Mac still takes hours. You either run `brew install` 50 times, maintain a Brewfile, or wrestle with Nix. OpenBoot handles it all:
+
+| | OpenBoot | Brewfile | Strap | chezmoi | nix-darwin |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Homebrew packages | ✅ | ✅ | ✅ | — | ✅ |
+| GUI apps (casks) | ✅ | ✅ | — | — | ✅ |
+| Dotfiles | ✅ | — | — | ✅ | ✅ |
+| Custom scripts | ✅ | — | — | ✅ | ✅ |
+| Interactive TUI | ✅ | — | — | — | — |
+| Web dashboard | ✅ | — | — | — | — |
+| Team config sharing | ✅ | — | — | — | — |
+| Skip already-installed | ✅ | — | ✅ | — | ✅ |
+| One-command setup | ✅ | — | ✅ | ✅ | — |
+| Learning curve | Low | Low | Low | High | Very High |
+
+## Features
+
+- **One-command setup** — `curl | bash` and you're done
+- **Interactive TUI** — search and select from 50+ curated dev tools across 13 categories
+- **3 presets** — minimal (CLI essentials), developer (ready-to-code), full (everything)
+- **Smart install** — detects already-installed packages, only installs what's new
+- **Parallel + sequential** — CLI tools install 4x in parallel, GUI apps install one at a time (for password prompts)
+- **Dotfiles** — clone your repo and deploy configs via GNU Stow
+- **Oh-My-Zsh** — installs with sensible aliases
+- **macOS preferences** — developer-friendly defaults
+- **Web dashboard** — create, share, and duplicate configs at [openboot.dev](https://openboot.dev)
+- **Snapshot** — capture your existing setup and share it as a config
+- **Dry-run mode** — preview everything before installing
+- **CI/automation** — silent mode with environment variables
+- **No telemetry** — zero analytics, zero tracking
 
 ## Quick Start
 
@@ -11,68 +54,49 @@
 curl -fsSL openboot.dev/install | bash
 ```
 
-## What is OpenBoot?
-
-OpenBoot is a CLI tool that bootstraps your Mac development environment in minutes. It provides:
-
-- **Interactive TUI** for selecting packages
-- **Curated presets** for different development workflows
-- **Custom configurations** via [openboot.dev](https://openboot.dev)
-- **Dotfiles integration** with GNU Stow
-
-## Prerequisites
-
-- macOS 12.0 (Monterey) or later
-- Internet connection
-- Admin privileges (for Homebrew)
-
-## Usage
-
-### Interactive Mode
-
-```bash
-curl -fsSL openboot.dev/install | bash
-```
-
-OpenBoot will guide you through:
+OpenBoot guides you through:
 1. Git identity configuration
-2. Preset selection
-3. Package customization
-4. Dotfiles setup (optional)
-5. Oh-My-Zsh installation (optional)
+2. Preset selection (minimal / developer / full)
+3. Package customization (searchable, categorized)
+4. Installation (parallel CLI, sequential GUI)
+5. Shell setup (Oh-My-Zsh + aliases)
+6. Dotfiles deployment (GNU Stow)
+7. macOS preferences
 
-### Custom Configuration
+## Presets
 
-Create your own config at [openboot.dev/dashboard](https://openboot.dev/dashboard), then:
+| Preset | Focus | Includes |
+|--------|-------|----------|
+| **minimal** | CLI essentials | ripgrep, fd, bat, fzf, lazygit, gh, Warp, Raycast |
+| **developer** | Ready-to-code | + Node, Go, Docker, VS Code, Chrome, OrbStack |
+| **full** | Complete setup | + Python, Rust, kubectl, Terraform, Ollama, Cursor, Figma |
+
+## Custom Configs
+
+Create a config at [openboot.dev/dashboard](https://openboot.dev/dashboard) and share it with your team:
 
 ```bash
 curl -fsSL openboot.dev/YOUR_USERNAME | bash
 ```
 
-### Non-Interactive Mode (CI/Automation)
+Import from an existing Brewfile, pick packages from the searchable catalog, or duplicate an existing config.
+
+## CI / Automation
 
 ```bash
 OPENBOOT_GIT_NAME="Your Name" \
 OPENBOOT_GIT_EMAIL="you@example.com" \
-curl -fsSL openboot.dev/install | bash -s -- --preset minimal --silent
+curl -fsSL openboot.dev/install | bash -s -- --preset developer --silent
 ```
-
-## Presets
-
-| Preset | Focus | Key Tools |
-|--------|-------|-----------|
-| **minimal** | Essential CLI tools | ripgrep, fd, bat, fzf, lazygit, gh |
-| **developer** | General development | Node, Go, Docker, VS Code, OrbStack |
-| **full** | Complete setup | kubectl, terraform, Python, Cursor |
 
 ## Commands
 
 ```bash
-openboot            # Interactive setup
-openboot doctor     # Check system health
-openboot update     # Update Homebrew and packages
-openboot update --dry-run  # Preview what would be updated
-openboot version    # Print version
+openboot                 # Interactive setup
+openboot doctor          # Check system health
+openboot update          # Update Homebrew and packages
+openboot update --dry-run  # Preview updates
+openboot version         # Print version
 ```
 
 ## CLI Options
@@ -99,39 +123,26 @@ openboot version    # Print version
 | `OPENBOOT_PRESET` | Default preset |
 | `OPENBOOT_USER` | Remote config username |
 
-## Features
+## Requirements
 
-- **Smart install** - Detects already-installed packages and skips them, only installs what's new
-- **Two-phase install** - CLI tools install in parallel (4x), GUI apps install sequentially with terminal access for password prompts
-- **Search** - Press `/` in package selector to search across categories
-- **Pre-flight checks** - Network connectivity and disk space verification
-- **Doctor** - Diagnose issues with `openboot doctor`
+- macOS 12.0 (Monterey) or later
+- Apple Silicon or Intel
+- Internet connection
+- Admin privileges (for Homebrew)
 
 ## Development
 
 ```bash
 git clone https://github.com/openbootdotdev/openboot.git
 cd openboot
-
 go build -o openboot ./cmd/openboot
 ./openboot --dry-run
-
-go test ./...
-```
-
-## Project Structure
-
-```
-openbootdotdev/
-├── openboot        # This repo - CLI tool (Go)
-├── openboot.dev    # Website & API (SvelteKit + Cloudflare)
-└── dotfiles        # Dotfiles template (GNU Stow)
 ```
 
 ## Related
 
-- [openboot.dev](https://github.com/openbootdotdev/openboot.dev) - Website & dashboard
-- [dotfiles](https://github.com/openbootdotdev/dotfiles) - Dotfiles template
+- [openboot.dev](https://openboot.dev) — Website, dashboard & API
+- [dotfiles](https://github.com/openbootdotdev/dotfiles) — Dotfiles template
 
 ## License
 
