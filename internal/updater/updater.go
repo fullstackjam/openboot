@@ -1,17 +1,24 @@
 package updater
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/openbootdotdev/openboot/internal/ui"
 )
 
 const checkInterval = 24 * time.Hour
+
+var (
+	httpClient     *http.Client
+	httpClientOnce sync.Once
+)
 
 type Release struct {
 	TagName string `json:"tag_name"`
@@ -36,8 +43,14 @@ func ShowUpdateNotificationIfAvailable(currentVersion string) {
 	}
 }
 
-func CheckForUpdatesAsync(currentVersion string) {
+func CheckForUpdatesAsync(ctx context.Context, currentVersion string) {
 	go func() {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
 		state, _ := loadState()
 
 		if state != nil && time.Since(state.LastCheck) < checkInterval {
@@ -77,8 +90,15 @@ func trimVersionPrefix(v string) string {
 	return v
 }
 
+func getHTTPClient() *http.Client {
+	httpClientOnce.Do(func() {
+		httpClient = &http.Client{Timeout: 5 * time.Second}
+	})
+	return httpClient
+}
+
 func getLatestVersion() (string, error) {
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := getHTTPClient()
 	resp, err := client.Get("https://api.github.com/repos/openbootdotdev/openboot/releases/latest")
 	if err != nil {
 		return "", err
@@ -97,13 +117,21 @@ func getLatestVersion() (string, error) {
 	return release.TagName, nil
 }
 
-func getCheckFilePath() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".openboot", "update_state.json")
+func getCheckFilePath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get home directory: %w", err)
+	}
+	return filepath.Join(home, ".openboot", "update_state.json"), nil
 }
 
 func loadState() (*CheckState, error) {
-	data, err := os.ReadFile(getCheckFilePath())
+	path, err := getCheckFilePath()
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -117,9 +145,15 @@ func loadState() (*CheckState, error) {
 }
 
 func saveState(state *CheckState) error {
-	path := getCheckFilePath()
+	path, err := getCheckFilePath()
+	if err != nil {
+		return err
+	}
+
 	dir := filepath.Dir(path)
-	os.MkdirAll(dir, 0755)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
 
 	data, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {

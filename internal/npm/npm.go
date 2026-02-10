@@ -24,13 +24,13 @@ func GetNodeVersion() (int, error) {
 	version := strings.TrimSpace(string(output))
 	version = strings.TrimPrefix(version, "v")
 	parts := strings.Split(version, ".")
-	if len(parts) == 0 {
+	if len(parts) == 0 || parts[0] == "" {
 		return 0, fmt.Errorf("invalid version format")
 	}
 
 	major, err := strconv.Atoi(parts[0])
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("invalid version format: %w", err)
 	}
 
 	return major, nil
@@ -55,14 +55,12 @@ func GetInstalledPackages() (map[string]bool, error) {
 			continue
 		}
 		parts := strings.Split(line, "/")
-		if len(parts) > 0 {
-			pkgName := parts[len(parts)-1]
-			if len(parts) >= 2 && strings.HasPrefix(parts[len(parts)-2], "@") {
-				pkgName = parts[len(parts)-2] + "/" + parts[len(parts)-1]
-			}
-			if pkgName != "" && pkgName != "npm" && pkgName != "corepack" {
-				packages[pkgName] = true
-			}
+		pkgName := parts[len(parts)-1]
+		if len(parts) >= 2 && strings.HasPrefix(parts[len(parts)-2], "@") {
+			pkgName = parts[len(parts)-2] + "/" + parts[len(parts)-1]
+		}
+		if pkgName != "" && pkgName != "npm" && pkgName != "corepack" {
+			packages[pkgName] = true
 		}
 	}
 
@@ -110,7 +108,10 @@ func Install(packages []string, dryRun bool) error {
 		return nil
 	}
 
-	installed, _ := GetInstalledPackages()
+	installed, err := GetInstalledPackages()
+	if err != nil {
+		return fmt.Errorf("failed to check installed packages: %w", err)
+	}
 
 	var toInstall []string
 	for _, p := range packages {
@@ -144,7 +145,10 @@ func Install(packages []string, dryRun bool) error {
 		ui.Warn(fmt.Sprintf("Batch install failed (%s), falling back to sequential...", batchError))
 		fmt.Println()
 
-		nowInstalled, _ := GetInstalledPackages()
+		nowInstalled, err := GetInstalledPackages()
+		if err != nil {
+			return fmt.Errorf("failed to check installed packages after batch install: %w", err)
+		}
 
 		var remaining []string
 		for _, pkg := range toInstall {
@@ -201,11 +205,9 @@ func parseNpmError(output string) string {
 		return "disk full"
 	default:
 		lines := strings.Split(strings.TrimSpace(output), "\n")
-		if len(lines) > 0 {
-			lastLine := strings.TrimSpace(lines[len(lines)-1])
-			if lastLine != "" && len(lastLine) < 120 {
-				return lastLine
-			}
+		lastLine := strings.TrimSpace(lines[len(lines)-1])
+		if lastLine != "" && len(lastLine) < 120 {
+			return lastLine
 		}
 		return "install failed"
 	}

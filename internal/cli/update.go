@@ -70,13 +70,12 @@ func runSelfUpdate() error {
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
+	defer f.Close()
 
 	if _, err := io.Copy(f, resp.Body); err != nil {
-		f.Close()
 		os.Remove(tmpPath)
 		return fmt.Errorf("failed to write binary: %w", err)
 	}
-	f.Close()
 
 	if err := os.Chmod(tmpPath, 0755); err != nil {
 		os.Remove(tmpPath)

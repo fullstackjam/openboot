@@ -40,3 +40,8 @@ __pycache__/
 *.tmp
 *.temp
 .cache/
+
+# Go test coverage
+coverage.out
+coverage.html
+*.coverprofile

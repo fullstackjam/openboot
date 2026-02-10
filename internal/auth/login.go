@@ -147,10 +147,10 @@ func pollForApproval(apiBase, codeID string) (*cliPollResponse, error) {
 			if err != nil {
 				continue
 			}
+			defer resp.Body.Close()
 
 			var result cliPollResponse
 			decodeErr := json.NewDecoder(resp.Body).Decode(&result)
-			resp.Body.Close()
 			if decodeErr != nil {
 				continue
 			}

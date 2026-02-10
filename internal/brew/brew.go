@@ -215,7 +215,10 @@ func InstallWithProgress(cliPkgs, caskPkgs []string, dryRun bool) error {
 		return nil
 	}
 
-	installedFormulae, installedCasks, _ := GetInstalledPackages()
+	installedFormulae, installedCasks, err := GetInstalledPackages()
+	if err != nil {
+		return fmt.Errorf("failed to check installed packages: %w", err)
+	}
 
 	var newCli []string
 	for _, p := range cliPkgs {
@@ -477,7 +480,7 @@ func parseBrewError(output string) string {
 		for _, line := range lines {
 			if strings.Contains(strings.ToLower(line), "error") {
 				if len(line) > 60 {
-					return line[:57] + "..."
+					return line[:60] + "..."
 				}
 				return line
 			}
@@ -529,7 +532,9 @@ func CheckNetwork() error {
 		if err != nil {
 			return fmt.Errorf("cannot reach %s: %v", host, err)
 		}
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			return fmt.Errorf("failed to close connection to %s: %w", host, err)
+		}
 	}
 	return nil
 }
@@ -546,7 +551,10 @@ func CheckDiskSpace() (float64, error) {
 
 func DoctorDiagnose() ([]string, error) {
 	cmd := exec.Command("brew", "doctor")
-	output, _ := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("brew doctor failed: %w", err)
+	}
 	outputStr := string(output)
 
 	if strings.Contains(outputStr, "ready to brew") {

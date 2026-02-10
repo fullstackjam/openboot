@@ -89,6 +89,7 @@ func (sp *StickyProgress) Start() {
 	sp.startTime = time.Now()
 	sp.mu.Unlock()
 
+	signal.Stop(sp.sigCh)
 	signal.Notify(sp.sigCh, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
@@ -144,18 +145,22 @@ func (sp *StickyProgress) render() {
 
 func (sp *StickyProgress) SetCurrent(pkgName string) {
 	sp.mu.Lock()
-	defer sp.mu.Unlock()
 	sp.currentPkg = pkgName
-	if sp.active {
+	shouldRender := sp.active
+	sp.mu.Unlock()
+
+	if shouldRender {
 		sp.render()
 	}
 }
 
 func (sp *StickyProgress) Increment() {
 	sp.mu.Lock()
-	defer sp.mu.Unlock()
 	sp.completed++
-	if sp.active {
+	shouldRender := sp.active
+	sp.mu.Unlock()
+
+	if shouldRender {
 		sp.render()
 	}
 }
@@ -180,8 +185,8 @@ func (sp *StickyProgress) PauseForInteractive() {
 
 func (sp *StickyProgress) ResumeAfterInteractive() {
 	sp.mu.Lock()
-	defer sp.mu.Unlock()
 	sp.active = true
+	sp.mu.Unlock()
 	sp.render()
 }
 

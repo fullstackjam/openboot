@@ -470,6 +470,11 @@ func parseLines(output string) []string {
 }
 
 func parseVersion(toolName, output string) string {
+	output = strings.TrimSpace(output)
+	if output == "" {
+		return ""
+	}
+
 	switch toolName {
 	case "go":
 		// "go version go1.22.0 darwin/arm64" -> "1.22.0"
@@ -479,6 +484,7 @@ func parseVersion(toolName, output string) string {
 				return strings.TrimPrefix(parts[2], "go")
 			}
 		}
+		return ""
 	case "node":
 		// "v20.11.0" -> "20.11.0"
 		return strings.TrimPrefix(output, "v")
@@ -491,25 +497,32 @@ func parseVersion(toolName, output string) string {
 		if len(parts) >= 2 {
 			return parts[1]
 		}
+		return ""
 	case "java":
-		// First line: 'openjdk 21.0.1 2023-10-17' or 'java 21.0.1 ...'
-		firstLine := strings.Split(output, "\n")[0]
+		lines := strings.Split(output, "\n")
+		if len(lines) == 0 {
+			return ""
+		}
+		firstLine := lines[0]
 		parts := strings.Fields(firstLine)
 		if len(parts) >= 2 {
 			return parts[1]
 		}
+		return ""
 	case "ruby":
 		// "ruby 3.2.2 (2023-03-30 revision e51014f9c0) ..." -> "3.2.2"
 		parts := strings.Fields(output)
 		if len(parts) >= 2 {
 			return parts[1]
 		}
+		return ""
 	case "docker":
 		// "Docker version 24.0.7, build afdd53b" -> "24.0.7"
 		parts := strings.Fields(output)
 		if len(parts) >= 3 {
 			return strings.TrimSuffix(parts[2], ",")
 		}
+		return ""
 	}
 	return output
 }
