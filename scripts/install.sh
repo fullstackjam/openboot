@@ -8,26 +8,6 @@ INSTALL_DIR="${OPENBOOT_INSTALL_DIR:-$HOME/.openboot/bin}"
 DRY_RUN="${OPENBOOT_DRY_RUN:-false}"
 SKIP_CHECKSUM="${OPENBOOT_SKIP_CHECKSUM:-false}"
 
-print_security_info() {
-    echo "🔒 OpenBoot Security Information"
-    echo "================================"
-    echo ""
-    echo "This script will:"
-    echo "  1. Download openboot binary from GitHub releases"
-    echo "  2. Install to: $INSTALL_DIR"
-    echo "  3. Add to PATH via shell rc file"
-    echo ""
-    echo "Repository: https://github.com/$REPO"
-    echo "Version: $VERSION"
-    echo ""
-    echo "To audit before running:"
-    echo "  curl -fsSL https://openboot.dev/install.sh | less"
-    echo ""
-    echo "To see what will happen without installing:"
-    echo "  OPENBOOT_DRY_RUN=true bash <(curl -fsSL https://openboot.dev/install.sh)"
-    echo ""
-}
-
 install_xcode_clt() {
     if xcode-select -p &>/dev/null; then
         return 0
@@ -105,7 +85,6 @@ verify_checksum() {
     local arch="$3"
     
     if [[ "$SKIP_CHECKSUM" == "true" ]]; then
-        echo "Skipping checksum verification (OPENBOOT_SKIP_CHECKSUM=true)"
         return 0
     fi
     
@@ -116,12 +95,8 @@ verify_checksum() {
         checksum_url="https://github.com/${REPO}/releases/download/${VERSION}/checksums.txt"
     fi
     
-    echo "Verifying checksum..."
-    
     local checksums
     if ! checksums=$(curl -fsSL "$checksum_url" 2>/dev/null); then
-        echo "⚠️  Warning: Could not download checksums file"
-        echo "   Continuing without verification (use OPENBOOT_SKIP_CHECKSUM=true to skip this warning)"
         return 0
     fi
     
@@ -129,7 +104,6 @@ verify_checksum() {
     expected_checksum=$(echo "$checksums" | grep "${BINARY_NAME}-${os}-${arch}" | awk '{print $1}')
     
     if [[ -z "$expected_checksum" ]]; then
-        echo "⚠️  Warning: No checksum found for ${os}/${arch}"
         return 0
     fi
     
@@ -139,22 +113,16 @@ verify_checksum() {
     elif command -v sha256sum &>/dev/null; then
         actual_checksum=$(sha256sum "$binary_path" | awk '{print $1}')
     else
-        echo "⚠️  Warning: No checksum tool found (shasum or sha256sum)"
         return 0
     fi
     
     if [[ "$actual_checksum" != "$expected_checksum" ]]; then
         echo ""
-        echo "❌ Error: Checksum verification failed!"
-        echo "   Expected: $expected_checksum"
-        echo "   Got:      $actual_checksum"
-        echo ""
-        echo "This could indicate a corrupted download or security issue."
-        echo "Please report this at: https://github.com/${REPO}/issues"
+        echo "Error: Downloaded file appears corrupted."
+        echo "Please try again or download manually from:"
+        echo "  https://github.com/${REPO}/releases"
         exit 1
     fi
-    
-    echo "✓ Checksum verified"
 }
 
 detect_shell() {
@@ -241,11 +209,6 @@ main() {
     local snapshot_mode=false
     if [[ "${1:-}" == "snapshot" ]]; then
         snapshot_mode=true
-    fi
-
-    if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
-        print_security_info
-        exit 0
     fi
 
     echo ""

@@ -86,32 +86,13 @@ jobs:
           body: |
             ## Installation
 
-            ### Quick Install
             ```bash
             curl -fsSL https://openboot.dev/install | bash
             ```
 
-            ### Security-Conscious Install
-            ```bash
-            # Preview before installing
-            OPENBOOT_DRY_RUN=true bash <(curl -fsSL https://openboot.dev/install.sh)
-
-            # Audit the script
-            curl -fsSL https://openboot.dev/install.sh | less
-
-            # Install with checksum verification (automatic)
-            curl -fsSL https://openboot.dev/install.sh | bash
-            ```
-
             ## Binaries
 
-            | Platform | Architecture | Download | Checksum |
-            |----------|--------------|----------|----------|
-            | macOS | Apple Silicon (M1/M2/M3) | `openboot-darwin-arm64` | See `checksums.txt` |
-            | macOS | Intel | `openboot-darwin-amd64` | See `checksums.txt` |
-
-            **Verify checksum manually:**
-            ```bash
-            shasum -a 256 openboot-darwin-arm64
-            # Compare with checksums.txt
-            ```
+            | Platform | Architecture | Download |
+            |----------|--------------|----------|
+            | macOS | Apple Silicon (M1/M2/M3) | `openboot-darwin-arm64` |
+            | macOS | Intel | `openboot-darwin-amd64` |
