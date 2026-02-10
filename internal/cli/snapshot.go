@@ -19,7 +19,7 @@ import (
 
 var snapshotCmd = &cobra.Command{
 	Use:   "snapshot",
-	Short: "Capture and upload your Mac's current dev environment",
+	Short: "Capture your Mac's current dev environment",
 	Long: `Scan your Mac for installed Homebrew packages, macOS preferences,
 shell configuration, and development tools.
 
@@ -118,7 +118,7 @@ func runSnapshot(cmd *cobra.Command) error {
 
 	// --- CONFIRM PHASE ---
 	fmt.Fprintln(os.Stderr)
-	upload, err := ui.Confirm("Upload this snapshot to openboot.dev?", true)
+	upload, err := ui.Confirm("Upload this snapshot to openboot.dev?", false)
 	if err != nil {
 		return err
 	}

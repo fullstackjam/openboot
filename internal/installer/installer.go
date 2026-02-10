@@ -227,7 +227,7 @@ func stepPackageCustomization(cfg *config.Config) error {
 	ui.Muted("Use Tab to switch categories, Space to toggle, Enter to confirm")
 	fmt.Println()
 
-	selected, confirmed, err := ui.RunSelector(cfg.Preset)
+	selected, onlinePkgs, confirmed, err := ui.RunSelector(cfg.Preset)
 	if err != nil {
 		return err
 	}
@@ -238,6 +238,7 @@ func stepPackageCustomization(cfg *config.Config) error {
 	}
 
 	cfg.SelectedPkgs = selected
+	cfg.OnlinePkgs = onlinePkgs
 
 	if cfg.RemoteConfig != nil && len(cfg.RemoteConfig.Packages) > 0 {
 		for _, pkg := range cfg.RemoteConfig.Packages {
@@ -294,6 +295,25 @@ func stepInstallPackages(cfg *config.Config) error {
 				}
 			}
 		}
+		seen := make(map[string]bool)
+		for _, p := range cliPkgs {
+			seen[p] = true
+		}
+		for _, p := range caskPkgs {
+			seen[p] = true
+		}
+		for _, pkg := range cfg.OnlinePkgs {
+			if seen[pkg.Name] {
+				continue
+			}
+			if pkg.IsNpm {
+				continue
+			} else if pkg.IsCask {
+				caskPkgs = append(caskPkgs, pkg.Name)
+			} else {
+				cliPkgs = append(cliPkgs, pkg.Name)
+			}
+		}
 	}
 
 	total := len(cliPkgs) + len(caskPkgs)
@@ -327,6 +347,15 @@ func stepInstallNpm(cfg *config.Config) error {
 				if pkg.IsNpm && cfg.SelectedPkgs[pkg.Name] {
 					npmPkgs = append(npmPkgs, pkg.Name)
 				}
+			}
+		}
+		npmSeen := make(map[string]bool)
+		for _, p := range npmPkgs {
+			npmSeen[p] = true
+		}
+		for _, pkg := range cfg.OnlinePkgs {
+			if pkg.IsNpm && !npmSeen[pkg.Name] {
+				npmPkgs = append(npmPkgs, pkg.Name)
 			}
 		}
 	}
@@ -502,6 +531,15 @@ func showCompletion(cfg *config.Config) {
 					cliCount++
 				}
 			}
+		}
+	}
+	for _, pkg := range cfg.OnlinePkgs {
+		if pkg.IsNpm {
+			npmCount++
+		} else if pkg.IsCask {
+			caskCount++
+		} else {
+			cliCount++
 		}
 	}
 

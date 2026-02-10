@@ -68,6 +68,7 @@ const onlineSearchDebounce = 500 * time.Millisecond
 type SelectorModel struct {
 	categories            []config.Category
 	selected              map[string]bool
+	selectedOnline        map[string]config.Package
 	activeTab             int
 	cursor                int
 	confirmed             bool
@@ -90,6 +91,7 @@ func NewSelector(presetName string) SelectorModel {
 	return SelectorModel{
 		categories:      config.Categories,
 		selected:        config.GetPackagesForPreset(presetName),
+		selectedOnline:  make(map[string]config.Package),
 		activeTab:       0,
 		cursor:          0,
 		cursorPositions: make(map[int]int),
@@ -138,6 +140,9 @@ func (m SelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Query == m.searchQuery {
 			m.onlineSearching = false
 			m.onlineResults = msg.Results
+			if total := m.totalSearchItems(); total > 0 && m.cursor >= total {
+				m.cursor = total - 1
+			}
 		}
 		return m, nil
 
@@ -175,17 +180,29 @@ func (m SelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor = 0
 				m.scrollOffset = 0
 				return m, nil
-			case "enter", " ":
+			case " ":
 				total := m.totalSearchItems()
 				if total > 0 && m.cursor < total {
-					pkg, _ := m.searchItemAt(m.cursor)
+					pkg, isOnline := m.searchItemAt(m.cursor)
 					m.selected[pkg.Name] = !m.selected[pkg.Name]
+					if isOnline {
+						if m.selected[pkg.Name] {
+							m.selectedOnline[pkg.Name] = pkg
+						} else {
+							delete(m.selectedOnline, pkg.Name)
+						}
+					}
 				}
+				return m, nil
+			case "enter":
+				m.showConfirmation = true
 				return m, nil
 			case "backspace":
 				if len(m.searchQuery) > 0 {
 					m.searchQuery = m.searchQuery[:len(m.searchQuery)-1]
 					m.updateFilteredPackages()
+					m.cursor = 0
+					m.scrollOffset = 0
 					m.onlineSearchQuery = m.searchQuery
 					m.onlineDebouncePending = true
 					m.onlineResults = nil
@@ -471,6 +488,12 @@ func (m SelectorModel) confirmationView() string {
 			}
 		}
 
+		if pkg == nil {
+			if op, ok := m.selectedOnline[name]; ok {
+				pkg = &op
+			}
+		}
+
 		if pkg != nil {
 			if pkg.IsNpm {
 				npm = append(npm, pkg.Name)
@@ -665,13 +688,23 @@ func (m SelectorModel) viewSearch() string {
 	lines = append(lines, "")
 	lines = append(lines, countStyle.Render(fmt.Sprintf("Selected: %d packages • Found: %d", totalSelected, foundCount)))
 	lines = append(lines, "")
-	lines = append(lines, helpStyle.Render("↑↓: navigate • Space: toggle • Esc: exit search • Enter: toggle selected"))
+	lines = append(lines, helpStyle.Render("↑↓: navigate • Space: toggle • Esc: exit search • Enter: confirm"))
 
 	return strings.Join(lines, "\n")
 }
 
 func (m SelectorModel) Selected() map[string]bool {
 	return m.selected
+}
+
+func (m SelectorModel) OnlineSelected() []config.Package {
+	var result []config.Package
+	for _, pkg := range m.selectedOnline {
+		if m.selected[pkg.Name] {
+			result = append(result, pkg)
+		}
+	}
+	return result
 }
 
 func (m SelectorModel) Confirmed() bool {
@@ -704,15 +737,15 @@ var keys = keyMap{
 	Quit:      key.NewBinding(key.WithKeys("q", "ctrl+c")),
 }
 
-func RunSelector(presetName string) (map[string]bool, bool, error) {
+func RunSelector(presetName string) (map[string]bool, []config.Package, bool, error) {
 	model := NewSelector(presetName)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	finalModel, err := p.Run()
 	if err != nil {
-		return nil, false, err
+		return nil, nil, false, err
 	}
 
 	m := finalModel.(SelectorModel)
-	return m.Selected(), m.Confirmed(), nil
+	return m.Selected(), m.OnlineSelected(), m.Confirmed(), nil
 }

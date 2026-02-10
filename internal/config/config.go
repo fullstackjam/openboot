@@ -27,6 +27,7 @@ type Config struct {
 	GitName      string
 	GitEmail     string
 	SelectedPkgs map[string]bool
+	OnlinePkgs   []Package
 	User         string
 	RemoteConfig *RemoteConfig
 }
