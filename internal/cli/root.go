@@ -18,23 +18,21 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "openboot",
 	Short: "Set up your Mac dev environment in one command",
-	Long: `OpenBoot sets up your Mac development environment in minutes.
-Homebrew, CLI tools, GUI apps, npm packages, shell, and macOS preferences — all in one go.
+	Long: `OpenBoot - Mac development environment setup tool
 
-Install:
-  curl -fsSL https://openboot.dev/install | bash
+Automates installation of Homebrew packages, CLI tools, GUI apps, npm packages,
+shell configuration, and macOS preferences.`,
+	Example: `  # Interactive setup with package selection
+  openboot
 
-Quick Start:
-  openboot                              Interactive setup with package selection
-  openboot snapshot                     Capture your current environment
-  openboot snapshot --import setup.json Restore from a snapshot
+  # Quick setup with a preset
+  openboot -p developer
 
-Remote Config:
-  openboot -u <github-username>         Install from your openboot.dev config
-  openboot -p developer                 Use a built-in preset
+  # Install from your cloud config
+  openboot -u githubusername
 
-Self-Update:
-  openboot update --self                Update OpenBoot to the latest version`,
+  # Capture your current environment
+  openboot snapshot --json > my-setup.json`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if cfg.Silent {
 			if name := os.Getenv("OPENBOOT_GIT_NAME"); name != "" {
@@ -77,22 +75,28 @@ Self-Update:
 }
 
 func init() {
-	rootCmd.Flags().StringVarP(&cfg.Preset, "preset", "p", "", "Use a preset (minimal, developer, full)")
-	rootCmd.Flags().StringVarP(&cfg.User, "user", "u", "", "Install from openboot.dev user config")
-	rootCmd.Flags().BoolVarP(&cfg.Silent, "silent", "s", false, "Non-interactive mode for CI")
-	rootCmd.Flags().BoolVar(&cfg.DryRun, "dry-run", false, "preview without installing or modifying anything")
-	rootCmd.Flags().BoolVar(&cfg.Update, "update", false, "Update Homebrew and upgrade packages")
-	rootCmd.Flags().BoolVar(&cfg.Rollback, "rollback", false, "Restore backed-up config files")
-	rootCmd.Flags().StringVar(&cfg.Shell, "shell", "", "Shell setup (install, skip)")
-	rootCmd.Flags().StringVar(&cfg.Macos, "macos", "", "macOS preferences (configure, skip)")
-	rootCmd.Flags().StringVar(&cfg.Dotfiles, "dotfiles", "", "Dotfiles (clone, link, skip)")
-	rootCmd.Flags().BoolVar(&cfg.Resume, "resume", false, "Resume an incomplete installation")
-	rootCmd.Flags().BoolVar(&cfg.PackagesOnly, "packages-only", false, "Install packages only, skip system configuration")
+	rootCmd.Flags().SortFlags = false
+
+	rootCmd.Flags().StringVarP(&cfg.Preset, "preset", "p", "", "use a preset: minimal, developer, full")
+	rootCmd.Flags().StringVarP(&cfg.User, "user", "u", "", "install from openboot.dev/username config")
+	rootCmd.Flags().BoolVarP(&cfg.Silent, "silent", "s", false, "non-interactive mode (for CI/CD)")
+	rootCmd.Flags().BoolVar(&cfg.DryRun, "dry-run", false, "preview changes without installing")
+	rootCmd.Flags().BoolVar(&cfg.Resume, "resume", false, "resume an incomplete installation")
+	rootCmd.Flags().BoolVar(&cfg.PackagesOnly, "packages-only", false, "install packages only, skip system config")
+
+	rootCmd.Flags().StringVar(&cfg.Shell, "shell", "", "shell setup: install, skip")
+	rootCmd.Flags().StringVar(&cfg.Macos, "macos", "", "macOS preferences: configure, skip")
+	rootCmd.Flags().StringVar(&cfg.Dotfiles, "dotfiles", "", "dotfiles: clone, link, skip")
+
+	rootCmd.Flags().BoolVar(&cfg.Update, "update", false, "update Homebrew before installing")
+	rootCmd.Flags().BoolVar(&cfg.Rollback, "rollback", false, "restore backed-up config files")
 
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(updateCmd)
 	rootCmd.AddCommand(doctorCmd)
 	rootCmd.AddCommand(snapshotCmd)
+
+	rootCmd.SetUsageTemplate(usageTemplate)
 }
 
 var versionCmd = &cobra.Command{
@@ -102,6 +106,35 @@ var versionCmd = &cobra.Command{
 		fmt.Printf("OpenBoot v%s\n", version)
 	},
 }
+
+const usageTemplate = `Usage:{{if .Runnable}}
+  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
+  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+
+Aliases:
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+
+Examples:
+{{.Example}}{{end}}{{if .HasAvailableSubCommands}}
+
+Commands:{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+
+Flags:
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+
+Global Flags:
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
+
+Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
+  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+
+Learn more:
+  Documentation: https://openboot.dev/docs
+  GitHub:        https://github.com/openbootdotdev/openboot
+`
 
 func Execute() error {
 	return rootCmd.Execute()
