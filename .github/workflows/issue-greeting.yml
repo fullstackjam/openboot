@@ -1,0 +1,39 @@
+name: Issue Greeting
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  greeting:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Greet new issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const isFirstIssue = issue.author_association === 'FIRST_TIME_CONTRIBUTOR' || 
+                                 issue.author_association === 'NONE';
+            
+            let message = `👋 Thanks for opening this issue!\n\n`;
+            
+            if (isFirstIssue) {
+              message += `Welcome to OpenBoot! We appreciate your contribution to the project.\n\n`;
+            }
+            
+            message += `To help us address this quickly:\n`;
+            message += `- If reporting a bug, please include your macOS version and OpenBoot version (\`openboot version\`)\n`;
+            message += `- If requesting a feature, describe your use case\n`;
+            message += `- If you have questions, check out our [documentation](https://openboot.dev)\n\n`;
+            message += `A maintainer will review this soon.`;
+            
+            github.rest.issues.createComment({
+              issue_number: issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
