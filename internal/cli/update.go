@@ -33,7 +33,7 @@ Examples:
 }
 
 func init() {
-	updateCmd.Flags().BoolVar(&cfg.DryRun, "dry-run", false, "Preview what would be updated without updating")
+	updateCmd.Flags().BoolVar(&cfg.DryRun, "dry-run", false, "preview without installing or modifying anything")
 	updateCmd.Flags().BoolVar(&selfUpdate, "self", false, "Update OpenBoot binary to latest release")
 }
 
