@@ -81,24 +81,37 @@ func Install(packages []string, dryRun bool) error {
 		return nil
 	}
 
-	progress := ui.NewStickyProgress(len(toInstall))
-	progress.Start()
+	ui.Info(fmt.Sprintf("Installing %d npm packages...", len(toInstall)))
+
+	args := append([]string{"install", "-g"}, toInstall...)
+	cmd := exec.Command("npm", args...)
+	_, err := cmd.CombinedOutput()
 
 	var failed []string
-	for _, pkg := range toInstall {
-		progress.SetCurrent(pkg)
-		cmd := exec.Command("npm", "install", "-g", pkg)
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			progress.PrintLine("  ✗ %s (%s)", pkg, parseNpmError(string(output)))
-			failed = append(failed, pkg)
-		} else {
-			progress.PrintLine("  ✔ %s", pkg)
-		}
-		progress.Increment()
-	}
+	if err == nil {
+		ui.Success(fmt.Sprintf("  ✔ %d npm packages installed", len(toInstall)))
+	} else {
+		ui.Warn("Batch install failed, falling back to sequential...")
+		fmt.Println()
 
-	progress.Finish()
+		progress := ui.NewStickyProgress(len(toInstall))
+		progress.Start()
+
+		for _, pkg := range toInstall {
+			progress.SetCurrent(pkg)
+			cmd := exec.Command("npm", "install", "-g", pkg)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				progress.PrintLine("  ✗ %s (%s)", pkg, parseNpmError(string(output)))
+				failed = append(failed, pkg)
+			} else {
+				progress.PrintLine("  ✔ %s", pkg)
+			}
+			progress.Increment()
+		}
+
+		progress.Finish()
+	}
 
 	if len(failed) > 0 {
 		fmt.Println()
