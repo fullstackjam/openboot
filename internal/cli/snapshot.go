@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -319,7 +320,30 @@ func printSnapshotList(items []string, max int) {
 }
 
 func runSnapshotImport(importPath string, dryRun bool) error {
-	snap, err := snapshot.LoadFile(importPath)
+	localPath := importPath
+	if strings.HasPrefix(importPath, "http://") || strings.HasPrefix(importPath, "https://") {
+		fmt.Fprintf(os.Stderr, "  Downloading snapshot from %s...\n", importPath)
+		resp, err := http.Get(importPath)
+		if err != nil {
+			return fmt.Errorf("failed to download snapshot: %w", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("failed to download snapshot: HTTP %d", resp.StatusCode)
+		}
+		tmpFile := filepath.Join(os.TempDir(), "openboot-snapshot-import.json")
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read snapshot response: %w", err)
+		}
+		if err := os.WriteFile(tmpFile, data, 0644); err != nil {
+			return fmt.Errorf("failed to save snapshot: %w", err)
+		}
+		defer os.Remove(tmpFile)
+		localPath = tmpFile
+	}
+
+	snap, err := snapshot.LoadFile(localPath)
 	if err != nil {
 		return err
 	}
