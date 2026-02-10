@@ -390,26 +390,19 @@ func runParallelInstallWithProgress(pkgs []string, progress *ui.StickyProgress) 
 }
 
 func installCaskWithProgress(pkg string, progress *ui.StickyProgress) string {
+	progress.PauseForInteractive()
+
 	cmd := exec.Command("brew", "install", "--cask", pkg)
 	cmd.Stdin = os.Stdin
-	output, err := cmd.CombinedOutput()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+
+	progress.ResumeAfterInteractive()
+
 	if err != nil {
-		outputStr := string(output)
-		if strings.Contains(strings.ToLower(outputStr), "try again using") || strings.Contains(strings.ToLower(outputStr), "not a cask") {
-			cmd2 := exec.Command("brew", "install", pkg)
-			cmd2.Stdin = os.Stdin
-			output2, err2 := cmd2.CombinedOutput()
-			if err2 != nil {
-				printBrewOutput(string(output2), progress)
-				return parseBrewError(string(output2))
-			}
-			printBrewOutput(string(output2), progress)
-			return ""
-		}
-		printBrewOutput(outputStr, progress)
-		return parseBrewError(outputStr)
+		return "install failed"
 	}
-	printBrewOutput(string(output), progress)
 	return ""
 }
 
