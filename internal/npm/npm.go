@@ -3,6 +3,7 @@ package npm
 import (
 	"fmt"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/openbootdotdev/openboot/internal/ui"
@@ -11,6 +12,28 @@ import (
 func IsAvailable() bool {
 	_, err := exec.LookPath("npm")
 	return err == nil
+}
+
+func GetNodeVersion() (int, error) {
+	cmd := exec.Command("node", "--version")
+	output, err := cmd.Output()
+	if err != nil {
+		return 0, err
+	}
+
+	version := strings.TrimSpace(string(output))
+	version = strings.TrimPrefix(version, "v")
+	parts := strings.Split(version, ".")
+	if len(parts) == 0 {
+		return 0, fmt.Errorf("invalid version format")
+	}
+
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, err
+	}
+
+	return major, nil
 }
 
 func GetInstalledPackages() (map[string]bool, error) {
@@ -56,6 +79,29 @@ func Install(packages []string, dryRun bool) error {
 		return nil
 	}
 
+	nodeVersion, err := GetNodeVersion()
+	if err == nil && nodeVersion > 0 {
+		packagesNeedingNode22 := []string{"wrangler", "@cloudflare/wrangler"}
+		needsWarning := false
+		for _, pkg := range packages {
+			for _, needNode22 := range packagesNeedingNode22 {
+				if pkg == needNode22 {
+					needsWarning = true
+					break
+				}
+			}
+			if needsWarning {
+				break
+			}
+		}
+
+		if needsWarning && nodeVersion < 22 {
+			ui.Warn(fmt.Sprintf("Node.js v%d detected. Some packages (like wrangler) require Node.js v22+", nodeVersion))
+			ui.Muted("Consider upgrading Node.js: brew install node@22")
+			fmt.Println()
+		}
+	}
+
 	if dryRun {
 		ui.Info("Would install npm packages:")
 		for _, p := range packages {
@@ -88,13 +134,14 @@ func Install(packages []string, dryRun bool) error {
 
 	args := append([]string{"install", "-g"}, toInstall...)
 	cmd := exec.Command("npm", args...)
-	_, err := cmd.CombinedOutput()
+	batchOutput, err := cmd.CombinedOutput()
 
 	var failed []string
 	if err == nil {
 		ui.Success(fmt.Sprintf("  ✔ %d npm packages installed", len(toInstall)))
 	} else {
-		ui.Warn("Batch install failed, falling back to sequential...")
+		batchError := parseNpmError(string(batchOutput))
+		ui.Warn(fmt.Sprintf("Batch install failed (%s), falling back to sequential...", batchError))
 		fmt.Println()
 
 		nowInstalled, _ := GetInstalledPackages()
@@ -153,6 +200,13 @@ func parseNpmError(output string) string {
 	case strings.Contains(lowerOutput, "enospc"):
 		return "disk full"
 	default:
+		lines := strings.Split(strings.TrimSpace(output), "\n")
+		if len(lines) > 0 {
+			lastLine := strings.TrimSpace(lines[len(lines)-1])
+			if lastLine != "" && len(lastLine) < 120 {
+				return lastLine
+			}
+		}
 		return "install failed"
 	}
 }

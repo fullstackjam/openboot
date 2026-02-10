@@ -67,12 +67,14 @@ func runSnapshot(cmd *cobra.Command) error {
 
 	// --- CAPTURE PHASE ---
 
-	// For --json: use silent Capture() (no progress UI, stdout must be clean)
+	// For --json: use silent Capture() but show progress on stderr (stdout must be clean for JSON)
 	if jsonFlag {
+		fmt.Fprintln(os.Stderr, "Capturing environment snapshot...")
 		snap, err := snapshot.Capture()
 		if err != nil {
 			return err
 		}
+		fmt.Fprintln(os.Stderr, "Matching packages with catalog...")
 		catalogMatch := snapshot.MatchPackages(snap)
 		snap.CatalogMatch = *catalogMatch
 		snap.MatchedPreset = snapshot.DetectBestPreset(snap)
@@ -80,6 +82,7 @@ func runSnapshot(cmd *cobra.Command) error {
 		if err != nil {
 			return fmt.Errorf("failed to marshal snapshot: %w", err)
 		}
+		fmt.Fprintln(os.Stderr, "✓ Snapshot complete")
 		fmt.Println(string(data))
 		return nil
 	}

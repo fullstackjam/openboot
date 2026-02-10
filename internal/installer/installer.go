@@ -211,6 +211,14 @@ func stepPresetSelection(cfg *config.Config) error {
 		}
 	}
 
+	// Handle "scratch" as special case - use minimal but show full catalog
+	if cfg.Preset == "scratch" {
+		ui.Success("Selected: scratch (choose from full catalog)")
+		ui.Muted("You'll be able to search and select individual packages")
+		fmt.Println()
+		return nil
+	}
+
 	preset, ok := config.GetPreset(cfg.Preset)
 	if !ok {
 		return fmt.Errorf("invalid preset: %s", cfg.Preset)
