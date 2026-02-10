@@ -77,17 +77,84 @@ get_download_url() {
     fi
 }
 
-add_to_path() {
-    local path_entry='export PATH="$HOME/.openboot/bin:$PATH"'
-    local zshrc="$HOME/.zshrc"
+detect_shell() {
+    local current_shell="${SHELL:-/bin/zsh}"
+    case "$current_shell" in
+        */zsh)  echo "zsh" ;;
+        */bash) echo "bash" ;;
+        */fish) echo "fish" ;;
+        *)      echo "zsh" ;;
+    esac
+}
 
-    if [[ -f "$zshrc" ]] && grep -qF '.openboot/bin' "$zshrc"; then
+get_shell_rc_file() {
+    local shell_type="$1"
+    case "$shell_type" in
+        zsh)  echo "$HOME/.zshrc" ;;
+        bash)
+            if [[ -f "$HOME/.bash_profile" ]]; then
+                echo "$HOME/.bash_profile"
+            else
+                echo "$HOME/.bashrc"
+            fi
+            ;;
+        fish) echo "$HOME/.config/fish/config.fish" ;;
+        *)    echo "$HOME/.zshrc" ;;
+    esac
+}
+
+create_env_file() {
+    local env_file="$HOME/.openboot/env.sh"
+    
+    if [[ -f "$env_file" ]]; then
         return 0
     fi
+    
+    cat > "$env_file" << 'EOF'
+# OpenBoot environment setup
+export PATH="$HOME/.openboot/bin:$PATH"
+EOF
+    
+    echo "Created $env_file"
+}
 
-    echo "" >> "$zshrc"
-    echo "$path_entry" >> "$zshrc"
-    echo "Added ~/.openboot/bin to PATH in .zshrc"
+add_to_path() {
+    local shell_type
+    shell_type=$(detect_shell)
+    local rc_file
+    rc_file=$(get_shell_rc_file "$shell_type")
+    
+    if [[ -f "$rc_file" ]] && grep -qF '.openboot/bin' "$rc_file"; then
+        echo "Already configured in $rc_file"
+        return 0
+    fi
+    
+    if [[ "$shell_type" == "fish" ]]; then
+        mkdir -p "$(dirname "$rc_file")"
+        echo "" >> "$rc_file"
+        echo "# OpenBoot" >> "$rc_file"
+        echo 'set -gx PATH "$HOME/.openboot/bin" $PATH' >> "$rc_file"
+    else
+        create_env_file
+        local source_line='[ -f "$HOME/.openboot/env.sh" ] && source "$HOME/.openboot/env.sh"'
+        echo "" >> "$rc_file"
+        echo "# OpenBoot" >> "$rc_file"
+        echo "$source_line" >> "$rc_file"
+    fi
+    
+    echo "Added to PATH in $rc_file"
+    
+    if [[ -d "$HOME/dotfiles" ]] || [[ -d "$HOME/.dotfiles" ]]; then
+        echo ""
+        echo "⚠️  Dotfiles detected!"
+        echo "If your dotfiles overwrite $rc_file, add this line:"
+        if [[ "$shell_type" == "fish" ]]; then
+            echo '  set -gx PATH "$HOME/.openboot/bin" $PATH'
+        else
+            echo '  [ -f "$HOME/.openboot/env.sh" ] && source "$HOME/.openboot/env.sh"'
+        fi
+        echo ""
+    fi
 }
 
 main() {
