@@ -4,6 +4,7 @@
 
 [![Release](https://img.shields.io/github/v/release/openbootdotdev/openboot)](https://github.com/openbootdotdev/openboot/releases)
 [![License](https://img.shields.io/github/license/openbootdotdev/openboot)](LICENSE)
+[![codecov](https://codecov.io/gh/openbootdotdev/openboot/branch/main/graph/badge.svg)](https://codecov.io/gh/openbootdotdev/openboot)
 
 <p align="center">
   <img src="demo.svg" alt="OpenBoot Demo" width="800" />
