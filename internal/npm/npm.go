@@ -23,6 +23,9 @@ func GetInstalledPackages() (map[string]bool, error) {
 	}
 
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) <= 1 {
+		return packages, nil
+	}
 	for _, line := range lines[1:] {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -132,6 +135,7 @@ func Install(packages []string, dryRun bool) error {
 		for _, f := range failed {
 			fmt.Printf("    - %s\n", f)
 		}
+		return fmt.Errorf("%d packages failed to install", len(failed))
 	}
 
 	return nil

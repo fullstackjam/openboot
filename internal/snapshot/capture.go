@@ -254,6 +254,9 @@ func CaptureNpm() ([]string, error) {
 	}
 
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) <= 1 {
+		return []string{}, nil
+	}
 	var packages []string
 	for _, line := range lines[1:] {
 		line = strings.TrimSpace(line)
