@@ -49,6 +49,9 @@ type StickyProgress struct {
 	stopCh     chan struct{}
 	sigCh      chan os.Signal
 	active     bool
+	succeeded  int
+	failed     int
+	skipped    int
 }
 
 var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
@@ -157,9 +160,31 @@ func (sp *StickyProgress) SetCurrent(pkgName string) {
 func (sp *StickyProgress) Increment() {
 	sp.mu.Lock()
 	sp.completed++
+	sp.succeeded++
 	shouldRender := sp.active
 	sp.mu.Unlock()
 
+	if shouldRender {
+		sp.render()
+	}
+}
+
+func (sp *StickyProgress) SetSkipped(count int) {
+	sp.mu.Lock()
+	sp.skipped = count
+	sp.mu.Unlock()
+}
+
+func (sp *StickyProgress) IncrementWithStatus(success bool) {
+	sp.mu.Lock()
+	sp.completed++
+	if success {
+		sp.succeeded++
+	} else {
+		sp.failed++
+	}
+	shouldRender := sp.active
+	sp.mu.Unlock()
 	if shouldRender {
 		sp.render()
 	}
@@ -197,8 +222,25 @@ func (sp *StickyProgress) Finish() {
 	defer sp.mu.Unlock()
 	sp.active = false
 	fmt.Printf("\r\033[K")
+
 	elapsed := time.Since(sp.startTime)
-	fmt.Printf("  Completed in %s\n", formatDuration(elapsed))
+
+	var parts []string
+	if sp.succeeded > 0 {
+		parts = append(parts, successStyle.Render(fmt.Sprintf("✔ %d installed", sp.succeeded)))
+	}
+	if sp.skipped > 0 {
+		parts = append(parts, mutedStyle.Render(fmt.Sprintf("○ %d skipped", sp.skipped)))
+	}
+	if sp.failed > 0 {
+		parts = append(parts, errorStyle.Render(fmt.Sprintf("✗ %d failed", sp.failed)))
+	}
+
+	if len(parts) > 0 {
+		fmt.Printf("  %s  %s\n", strings.Join(parts, "  "), etaStyle.Render(fmt.Sprintf("(%s)", FormatDuration(elapsed))))
+	} else {
+		fmt.Printf("  Completed in %s\n", FormatDuration(elapsed))
+	}
 }
 
 func truncate(s string, maxLen int) string {
@@ -237,7 +279,7 @@ func (sp *StickyProgress) estimateRemaining() string {
 	return fmt.Sprintf("~%dm", mins)
 }
 
-func formatDuration(d time.Duration) string {
+func FormatDuration(d time.Duration) string {
 	if d < time.Minute {
 		return fmt.Sprintf("%.1fs", d.Seconds())
 	}

@@ -249,6 +249,7 @@ func InstallWithProgress(cliPkgs, caskPkgs []string, dryRun bool) error {
 	}
 
 	progress := ui.NewStickyProgress(len(newCli) + len(newCask))
+	progress.SetSkipped(skipped)
 	progress.Start()
 
 	var allFailed []failedJob
@@ -262,14 +263,22 @@ func InstallWithProgress(cliPkgs, caskPkgs []string, dryRun bool) error {
 		for _, pkg := range newCask {
 			progress.SetCurrent(pkg)
 			progress.PrintLine("  Installing %s...", pkg)
+			start := time.Now()
 			errMsg := installCaskWithProgress(pkg, progress)
+			elapsed := time.Since(start)
+			progress.IncrementWithStatus(errMsg == "")
+			duration := ui.FormatDuration(elapsed)
+			if errMsg == "" {
+				progress.PrintLine("  %s %s", ui.Green("✔ "+pkg), ui.Cyan("("+duration+")"))
+			} else {
+				progress.PrintLine("  %s %s", ui.Red("✗ "+pkg+" ("+errMsg+")"), ui.Cyan("("+duration+")"))
+			}
 			if errMsg != "" {
 				allFailed = append(allFailed, failedJob{
 					installJob: installJob{name: pkg, isCask: true},
 					errMsg:     errMsg,
 				})
 			}
-			progress.Increment()
 		}
 	}
 
@@ -355,14 +364,17 @@ func runParallelInstallWithProgress(pkgs []string, progress *ui.StickyProgress) 
 			defer wg.Done()
 			for job := range jobChan {
 				progress.SetCurrent(job.name)
+				start := time.Now()
 				errMsg := installFormulaWithError(job.name)
+				elapsed := time.Since(start)
+				progress.IncrementWithStatus(errMsg == "")
+				duration := ui.FormatDuration(elapsed)
 				if errMsg == "" {
-					progress.PrintLine("  ✔ %s", job.name)
+					progress.PrintLine("  %s %s", ui.Green("✔ "+job.name), ui.Cyan("("+duration+")"))
 				} else {
-					progress.PrintLine("  ✗ %s (%s)", job.name, errMsg)
+					progress.PrintLine("  %s %s", ui.Red("✗ "+job.name+" ("+errMsg+")"), ui.Cyan("("+duration+")"))
 				}
 				results <- installResult{name: job.name, failed: errMsg != "", isCask: job.isCask, errMsg: errMsg}
-				progress.Increment()
 			}
 		}()
 	}
