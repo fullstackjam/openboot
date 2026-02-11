@@ -53,7 +53,26 @@ var (
 	onlineSearchingStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#888")).
 				Italic(true)
+
+	searchBarQueryStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#fff")).
+				Bold(true)
+
+	searchBarSepStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#444"))
+
+	searchBarStatsStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#888"))
+
+	searchBarIconStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#f59e0b"))
+
+	searchBarHintStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#555")).
+				Italic(true)
 )
+
+var searchSpinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
 type onlineSearchResultMsg struct {
 	Results []config.Package
@@ -63,7 +82,24 @@ type onlineSearchResultMsg struct {
 
 type onlineSearchTickMsg struct{}
 
+type searchSpinnerTickMsg struct{}
+
+func searchSpinnerTickCmd() tea.Cmd {
+	return tea.Tick(80*time.Millisecond, func(time.Time) tea.Msg {
+		return searchSpinnerTickMsg{}
+	})
+}
+
+type toastClearMsg struct{}
+
 const onlineSearchDebounce = 500 * time.Millisecond
+const toastDuration = 1500 * time.Millisecond
+
+func toastClearCmd() tea.Cmd {
+	return tea.Tick(toastDuration, func(time.Time) tea.Msg {
+		return toastClearMsg{}
+	})
+}
 
 type SelectorModel struct {
 	categories            []config.Category
@@ -85,6 +121,10 @@ type SelectorModel struct {
 	onlineSearchQuery     string
 	onlineDebouncePending bool
 	showConfirmation      bool
+	toastMessage          string
+	toastTime             time.Time
+	toastIsAdd            bool
+	searchSpinnerIdx      int
 }
 
 func NewSelector(presetName string) SelectorModel {
@@ -146,11 +186,23 @@ func (m SelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case toastClearMsg:
+		m.toastMessage = ""
+		return m, nil
+
+	case searchSpinnerTickMsg:
+		if m.searchMode && m.onlineSearching {
+			m.searchSpinnerIdx = (m.searchSpinnerIdx + 1) % len(searchSpinnerFrames)
+			return m, searchSpinnerTickCmd()
+		}
+		return m, nil
+
 	case onlineSearchTickMsg:
 		if m.onlineDebouncePending && m.searchQuery != "" && m.searchQuery == m.onlineSearchQuery {
 			m.onlineDebouncePending = false
 			m.onlineSearching = true
-			return m, searchOnlineCmd(m.searchQuery)
+			m.searchSpinnerIdx = 0
+			return m, tea.Batch(searchOnlineCmd(m.searchQuery), searchSpinnerTickCmd())
 		}
 		m.onlineDebouncePending = false
 		return m, nil
@@ -192,6 +244,15 @@ func (m SelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							delete(m.selectedOnline, pkg.Name)
 						}
 					}
+					if m.selected[pkg.Name] {
+						m.toastMessage = "+ Added " + pkg.Name
+						m.toastIsAdd = true
+					} else {
+						m.toastMessage = "- Removed " + pkg.Name
+						m.toastIsAdd = false
+					}
+					m.toastTime = time.Now()
+					return m, toastClearCmd()
 				}
 				return m, nil
 			case "enter":
@@ -288,6 +349,15 @@ func (m SelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor < len(cat.Packages) {
 				pkg := cat.Packages[m.cursor]
 				m.selected[pkg.Name] = !m.selected[pkg.Name]
+				if m.selected[pkg.Name] {
+					m.toastMessage = "+ Added " + pkg.Name
+					m.toastIsAdd = true
+				} else {
+					m.toastMessage = "- Removed " + pkg.Name
+					m.toastIsAdd = false
+				}
+				m.toastTime = time.Now()
+				return m, toastClearCmd()
 			}
 
 		case key.Matches(msg, keys.Enter):
@@ -306,6 +376,15 @@ func (m SelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			for _, pkg := range cat.Packages {
 				m.selected[pkg.Name] = !allSelected
 			}
+			if !allSelected {
+				m.toastMessage = fmt.Sprintf("✔ Selected all %d %s", len(cat.Packages), cat.Name)
+				m.toastIsAdd = true
+			} else {
+				m.toastMessage = fmt.Sprintf("○ Deselected all %s", cat.Name)
+				m.toastIsAdd = false
+			}
+			m.toastTime = time.Now()
+			return m, toastClearCmd()
 		}
 	}
 
@@ -478,7 +557,15 @@ func (m SelectorModel) View() string {
 	}
 
 	lines = append(lines, "")
-	lines = append(lines, countStyle.Render(fmt.Sprintf("Selected: %d packages", totalSelected)))
+	if m.toastMessage != "" {
+		toastStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#22c55e")).Italic(true)
+		if !m.toastIsAdd {
+			toastStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#888")).Italic(true)
+		}
+		lines = append(lines, toastStyle.Render(m.toastMessage))
+	} else {
+		lines = append(lines, countStyle.Render(fmt.Sprintf("Selected: %d packages", totalSelected)))
+	}
 	lines = append(lines, "")
 	lines = append(lines, helpStyle.Render("Tab/←→: switch • ↑↓: navigate • Space: toggle • /: search • a: all • Enter: confirm • q: quit"))
 
@@ -609,8 +696,33 @@ func (m SelectorModel) confirmationView() string {
 func (m SelectorModel) viewSearch() string {
 	var lines []string
 
-	searchBox := fmt.Sprintf("Search: %s▌", m.searchQuery)
-	lines = append(lines, activeTabStyle.Render(searchBox))
+	query := m.searchQuery + "▌"
+	searchBar := searchBarIconStyle.Render("🔍 ") + searchBarQueryStyle.Render(query)
+
+	localCount := len(m.filteredPkgs)
+	onlineCount := len(m.onlineResults)
+
+	var statsText string
+	if m.searchQuery == "" {
+		statsText = searchBarHintStyle.Render("Type to search all categories and online...")
+	} else if m.onlineSearching {
+		spinner := searchSpinnerFrames[m.searchSpinnerIdx]
+		statsText = searchBarStatsStyle.Render(fmt.Sprintf("%d local", localCount)) +
+			searchBarSepStyle.Render(" · ") +
+			scanActiveStyle.Render(spinner+" searching...")
+	} else if onlineCount > 0 {
+		statsText = searchBarStatsStyle.Render(fmt.Sprintf("%d local", localCount)) +
+			searchBarSepStyle.Render(" · ") +
+			searchBarStatsStyle.Render(fmt.Sprintf("%d online", onlineCount))
+	} else if localCount > 0 {
+		statsText = searchBarStatsStyle.Render(fmt.Sprintf("%d found", localCount))
+	} else {
+		statsText = searchBarStatsStyle.Render("no results")
+	}
+
+	searchBar += "  " + searchBarSepStyle.Render("│") + "  " + statsText
+
+	lines = append(lines, searchBar)
 	lines = append(lines, "")
 
 	visibleItems := m.getVisibleItems()
@@ -618,9 +730,10 @@ func (m SelectorModel) viewSearch() string {
 
 	if len(m.filteredPkgs) == 0 && len(m.onlineResults) == 0 && !m.onlineSearching {
 		if m.searchQuery == "" {
-			lines = append(lines, descStyle.Render("Type to search packages..."))
+			lines = append(lines, "")
+			lines = append(lines, descStyle.Render("  Search across all categories and discover new packages"))
 		} else {
-			lines = append(lines, descStyle.Render("No packages found"))
+			lines = append(lines, descStyle.Render("  No matching packages"))
 		}
 	} else {
 		endIdx := visibleItems
@@ -661,7 +774,7 @@ func (m SelectorModel) viewSearch() string {
 
 		if m.onlineSearching {
 			lines = append(lines, "")
-			lines = append(lines, onlineSearchingStyle.Render("  Searching online..."))
+			lines = append(lines, descStyle.Render("  ── Loading online results ──"))
 			itemsRendered += 2
 		} else if len(m.onlineResults) > 0 {
 			lines = append(lines, "")
@@ -720,9 +833,16 @@ func (m SelectorModel) viewSearch() string {
 		}
 	}
 
-	foundCount := len(m.filteredPkgs) + len(m.onlineResults)
 	lines = append(lines, "")
-	lines = append(lines, countStyle.Render(fmt.Sprintf("Selected: %d packages • Found: %d", totalSelected, foundCount)))
+	if m.toastMessage != "" {
+		toastStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#22c55e")).Italic(true)
+		if !m.toastIsAdd {
+			toastStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#888")).Italic(true)
+		}
+		lines = append(lines, toastStyle.Render(m.toastMessage))
+	} else {
+		lines = append(lines, countStyle.Render(fmt.Sprintf("Selected: %d packages", totalSelected)))
+	}
 	lines = append(lines, "")
 	lines = append(lines, helpStyle.Render("↑↓: navigate • Space: toggle • Esc: exit search • Enter: confirm"))
 
