@@ -12,9 +12,9 @@ Output demo.gif
 Output demo.webm
 
 Set Shell "bash"
-Set FontSize 26
-Set Width 1600
-Set Height 960
+Set FontSize 22
+Set Width 1100
+Set Height 660
 Set Padding 24
 Set Framerate 60
 Set Theme "Catppuccin Mocha"
