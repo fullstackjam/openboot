@@ -97,6 +97,7 @@ verify_checksum() {
     
     local checksums
     if ! checksums=$(curl -fsSL "$checksum_url" 2>/dev/null); then
+        echo "Warning: Could not download checksums file. Skipping verification."
         return 0
     fi
     
@@ -104,6 +105,7 @@ verify_checksum() {
     expected_checksum=$(echo "$checksums" | grep "${BINARY_NAME}-${os}-${arch}" | awk '{print $1}')
     
     if [[ -z "$expected_checksum" ]]; then
+        echo "Warning: No checksum found for ${BINARY_NAME}-${os}-${arch}. Skipping verification."
         return 0
     fi
     

@@ -26,6 +26,9 @@ jobs:
         with:
           go-version-file: "go.mod"
 
+      - name: Vet
+        run: go vet ./...
+
       - name: Run all tests
         run: make test-all
 
