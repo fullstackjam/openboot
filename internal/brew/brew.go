@@ -431,38 +431,80 @@ func printBrewOutput(output string, progress *ui.StickyProgress) {
 }
 
 func installFormulaWithError(pkg string) string {
-	cmd := exec.Command("brew", "install", pkg)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
+	maxAttempts := 3
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		cmd := exec.Command("brew", "install", pkg)
+		output, err := cmd.CombinedOutput()
+		if err == nil {
+			return ""
+		}
+
 		outputStr := string(output)
 		if strings.Contains(strings.ToLower(outputStr), "try again using") && strings.Contains(strings.ToLower(outputStr), "--cask") {
 			cmd2 := exec.Command("brew", "install", "--cask", pkg)
 			output2, err2 := cmd2.CombinedOutput()
-			if err2 != nil {
-				return parseBrewError(string(output2))
+			if err2 == nil {
+				return ""
 			}
-			return ""
+			outputStr = string(output2)
 		}
-		return parseBrewError(outputStr)
+
+		errMsg := parseBrewError(outputStr)
+		if attempt < maxAttempts && isRetryableError(errMsg) {
+			delay := time.Duration(attempt) * 2 * time.Second
+			time.Sleep(delay)
+			continue
+		}
+
+		return errMsg
 	}
-	return ""
+	return "max retries exceeded"
+}
+
+func isRetryableError(errMsg string) bool {
+	retryableErrors := []string{
+		"connection timed out",
+		"connection refused",
+		"no internet connection",
+		"download corrupted",
+	}
+	for _, retryable := range retryableErrors {
+		if strings.Contains(errMsg, retryable) {
+			return true
+		}
+	}
+	return false
 }
 
 func installSmartCaskWithError(pkg string) string {
-	cmd := exec.Command("brew", "install", "--cask", pkg)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
+	maxAttempts := 3
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		cmd := exec.Command("brew", "install", "--cask", pkg)
+		output, err := cmd.CombinedOutput()
+		if err == nil {
+			return ""
+		}
+
 		cmd2 := exec.Command("brew", "install", pkg)
 		output2, err2 := cmd2.CombinedOutput()
-		if err2 != nil {
-			errMsg := parseBrewError(string(output))
-			if errMsg == "unknown error" {
-				errMsg = parseBrewError(string(output2))
-			}
-			return errMsg
+		if err2 == nil {
+			return ""
 		}
+
+		errMsg := parseBrewError(string(output))
+		if errMsg == "unknown error" {
+			errMsg = parseBrewError(string(output2))
+		}
+
+		if attempt < maxAttempts && isRetryableError(errMsg) {
+			delay := time.Duration(attempt) * 2 * time.Second
+			time.Sleep(delay)
+			continue
+		}
+
+		return errMsg
 	}
-	return ""
+	return "max retries exceeded"
 }
 
 func parseBrewError(output string) string {

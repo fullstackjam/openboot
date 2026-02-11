@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/openbootdotdev/openboot/internal/ui"
 )
@@ -165,10 +166,9 @@ func Install(packages []string, dryRun bool) error {
 
 			for _, pkg := range remaining {
 				progress.SetCurrent(pkg)
-				cmd := exec.Command("npm", "install", "-g", pkg)
-				output, err := cmd.CombinedOutput()
-				if err != nil {
-					progress.PrintLine("  ✗ %s (%s)", pkg, parseNpmError(string(output)))
+				errMsg := installNpmPackageWithRetry(pkg)
+				if errMsg != "" {
+					progress.PrintLine("  ✗ %s (%s)", pkg, errMsg)
 					failed = append(failed, pkg)
 				} else {
 					progress.PrintLine("  ✔ %s", pkg)
@@ -190,6 +190,41 @@ func Install(packages []string, dryRun bool) error {
 	}
 
 	return nil
+}
+
+func installNpmPackageWithRetry(pkg string) string {
+	maxAttempts := 3
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		cmd := exec.Command("npm", "install", "-g", pkg)
+		output, err := cmd.CombinedOutput()
+		if err == nil {
+			return ""
+		}
+
+		errMsg := parseNpmError(string(output))
+		if attempt < maxAttempts && isNpmRetryableError(errMsg) {
+			delay := time.Duration(attempt) * 2 * time.Second
+			time.Sleep(delay)
+			continue
+		}
+
+		return errMsg
+	}
+	return "max retries exceeded"
+}
+
+func isNpmRetryableError(errMsg string) bool {
+	retryableErrors := []string{
+		"network error",
+		"connection",
+		"timeout",
+	}
+	for _, retryable := range retryableErrors {
+		if strings.Contains(strings.ToLower(errMsg), retryable) {
+			return true
+		}
+	}
+	return false
 }
 
 func parseNpmError(output string) string {

@@ -45,11 +45,54 @@ func runInstall(cfg *config.Config) error {
 		fmt.Println()
 	}
 
+	if err := checkDependencies(cfg); err != nil {
+		return err
+	}
+
 	if cfg.RemoteConfig != nil {
 		return runCustomInstall(cfg)
 	}
 
 	return runInteractiveInstall(cfg)
+}
+
+func checkDependencies(cfg *config.Config) error {
+	if cfg.DryRun {
+		return nil
+	}
+
+	hasIssues := false
+
+	if !brew.IsInstalled() {
+		hasIssues = true
+		ui.Warn("Homebrew is not installed")
+		ui.Info("Homebrew is required to install packages")
+		ui.Muted("Install with: /bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"")
+		fmt.Println()
+	}
+
+	gitName, gitEmail := system.GetExistingGitConfig()
+	if gitName == "" || gitEmail == "" {
+		if !cfg.PackagesOnly {
+			hasIssues = true
+			ui.Warn("Git user information is not configured")
+			ui.Info("You'll be prompted to configure it during installation")
+			fmt.Println()
+		}
+	}
+
+	if hasIssues && !cfg.Silent {
+		cont, err := ui.Confirm("Continue with installation?", true)
+		if err != nil {
+			return err
+		}
+		if !cont {
+			return fmt.Errorf("installation cancelled")
+		}
+		fmt.Println()
+	}
+
+	return nil
 }
 
 func runCustomInstall(cfg *config.Config) error {
@@ -295,7 +338,39 @@ func stepInstallPackages(cfg *config.Config) error {
 		return nil
 	}
 
-	ui.Info(fmt.Sprintf("Installing %d packages (%d CLI, %d GUI)...", total, len(cliPkgs), len(caskPkgs)))
+	state, _ := loadState()
+
+	var newCli []string
+	var newCask []string
+
+	if !cfg.DryRun {
+		for _, pkg := range cliPkgs {
+			if !state.isFormulaInstalled(pkg) {
+				newCli = append(newCli, pkg)
+			}
+		}
+		for _, pkg := range caskPkgs {
+			if !state.isCaskInstalled(pkg) {
+				newCask = append(newCask, pkg)
+			}
+		}
+
+		stateSkipped := (len(cliPkgs) - len(newCli)) + (len(caskPkgs) - len(newCask))
+		if stateSkipped > 0 {
+			ui.Muted(fmt.Sprintf("Skipping %d packages from previous install", stateSkipped))
+		}
+
+		cliPkgs = newCli
+		caskPkgs = newCask
+	}
+
+	if len(cliPkgs)+len(caskPkgs) == 0 {
+		ui.Success("All packages already installed!")
+		fmt.Println()
+		return nil
+	}
+
+	ui.Info(fmt.Sprintf("Installing %d packages (%d CLI, %d GUI)...", len(cliPkgs)+len(caskPkgs), len(cliPkgs), len(caskPkgs)))
 	fmt.Println()
 
 	if err := brew.InstallWithProgress(cliPkgs, caskPkgs, cfg.DryRun); err != nil {
@@ -303,6 +378,12 @@ func stepInstallPackages(cfg *config.Config) error {
 	}
 
 	if !cfg.DryRun {
+		for _, pkg := range cliPkgs {
+			state.markFormula(pkg)
+		}
+		for _, pkg := range caskPkgs {
+			state.markCask(pkg)
+		}
 		ui.Success("Package installation complete")
 	}
 	fmt.Println()
@@ -323,13 +404,44 @@ func stepInstallNpm(cfg *config.Config) error {
 		return nil
 	}
 
+	state, _ := loadState()
+
+	var newNpm []string
+	if !cfg.DryRun {
+		for _, pkg := range npmPkgs {
+			if !state.isNpmInstalled(pkg) {
+				newNpm = append(newNpm, pkg)
+			}
+		}
+
+		stateSkipped := len(npmPkgs) - len(newNpm)
+		if stateSkipped > 0 {
+			ui.Muted(fmt.Sprintf("Skipping %d npm packages from previous install", stateSkipped))
+		}
+
+		npmPkgs = newNpm
+	}
+
+	if len(npmPkgs) == 0 {
+		ui.Success("All npm packages already installed!")
+		return nil
+	}
+
 	fmt.Println()
 	ui.Header("NPM Global Packages")
 	fmt.Println()
 	ui.Info(fmt.Sprintf("Installing %d npm packages...", len(npmPkgs)))
 	fmt.Println()
 
-	return npm.Install(npmPkgs, cfg.DryRun)
+	err := npm.Install(npmPkgs, cfg.DryRun)
+
+	if !cfg.DryRun && err == nil {
+		for _, pkg := range npmPkgs {
+			state.markNpm(pkg)
+		}
+	}
+
+	return err
 }
 
 func stepInstallNpmWithRetry(cfg *config.Config) error {
