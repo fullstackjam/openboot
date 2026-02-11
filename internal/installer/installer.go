@@ -17,6 +17,12 @@ import (
 
 var ErrUserCancelled = fmt.Errorf("user cancelled")
 
+const (
+	estimatedSecondsPerFormula = 15
+	estimatedSecondsPerCask    = 30
+	estimatedSecondsPerNpm     = 5
+)
+
 func Run(cfg *config.Config) error {
 	if cfg.Update {
 		return runUpdate(cfg)
@@ -56,18 +62,12 @@ func runCustomInstall(cfg *config.Config) error {
 	}
 	fmt.Println()
 
-	// Calculate estimated install time
 	formulaeCount := len(cfg.RemoteConfig.Packages)
 	caskCount := len(cfg.RemoteConfig.Casks)
 	npmCount := len(cfg.RemoteConfig.Npm)
 	totalPackages := formulaeCount + caskCount + npmCount
 
-	// Heuristic: ~15s per formula, ~30s per cask, ~5s per npm
-	totalSeconds := formulaeCount*15 + caskCount*30 + npmCount*5
-	minutes := totalSeconds / 60
-	if minutes < 1 {
-		minutes = 1
-	}
+	minutes := estimateInstallMinutes(formulaeCount, caskCount, npmCount)
 	ui.Info(fmt.Sprintf("Estimated install time: ~%d min for %d packages", minutes, totalPackages))
 	fmt.Println()
 
@@ -285,60 +285,9 @@ func stepInstallPackages(cfg *config.Config) error {
 	ui.Header("Step 4: Installation")
 	fmt.Println()
 
-	var cliPkgs, caskPkgs []string
-
-	if cfg.RemoteConfig != nil {
-		caskSet := make(map[string]bool)
-		for _, c := range cfg.RemoteConfig.Casks {
-			caskSet[c] = true
-		}
-		npmSet := make(map[string]bool)
-		for _, n := range cfg.RemoteConfig.Npm {
-			npmSet[n] = true
-		}
-		for pkg := range cfg.SelectedPkgs {
-			if npmSet[pkg] || config.IsNpmPackage(pkg) {
-				continue
-			} else if caskSet[pkg] || config.IsCaskPackage(pkg) {
-				caskPkgs = append(caskPkgs, pkg)
-			} else {
-				cliPkgs = append(cliPkgs, pkg)
-			}
-		}
-	} else {
-		for _, cat := range config.Categories {
-			for _, pkg := range cat.Packages {
-				if cfg.SelectedPkgs[pkg.Name] {
-					if pkg.IsNpm {
-						continue
-					} else if pkg.IsCask {
-						caskPkgs = append(caskPkgs, pkg.Name)
-					} else {
-						cliPkgs = append(cliPkgs, pkg.Name)
-					}
-				}
-			}
-		}
-		seen := make(map[string]bool)
-		for _, p := range cliPkgs {
-			seen[p] = true
-		}
-		for _, p := range caskPkgs {
-			seen[p] = true
-		}
-		for _, pkg := range cfg.OnlinePkgs {
-			if seen[pkg.Name] {
-				continue
-			}
-			if pkg.IsNpm {
-				continue
-			} else if pkg.IsCask {
-				caskPkgs = append(caskPkgs, pkg.Name)
-			} else {
-				cliPkgs = append(cliPkgs, pkg.Name)
-			}
-		}
-	}
+	pkgs := categorizeSelectedPackages(cfg)
+	cliPkgs := pkgs.cli
+	caskPkgs := pkgs.cask
 
 	total := len(cliPkgs) + len(caskPkgs)
 	if total == 0 {
@@ -366,22 +315,8 @@ func stepInstallNpm(cfg *config.Config) error {
 	if cfg.RemoteConfig != nil {
 		npmPkgs = cfg.RemoteConfig.Npm
 	} else {
-		for _, cat := range config.Categories {
-			for _, pkg := range cat.Packages {
-				if pkg.IsNpm && cfg.SelectedPkgs[pkg.Name] {
-					npmPkgs = append(npmPkgs, pkg.Name)
-				}
-			}
-		}
-		npmSeen := make(map[string]bool)
-		for _, p := range npmPkgs {
-			npmSeen[p] = true
-		}
-		for _, pkg := range cfg.OnlinePkgs {
-			if pkg.IsNpm && !npmSeen[pkg.Name] {
-				npmPkgs = append(npmPkgs, pkg.Name)
-			}
-		}
+		pkgs := categorizeSelectedPackages(cfg)
+		npmPkgs = pkgs.npm
 	}
 
 	if len(npmPkgs) == 0 {
@@ -690,4 +625,75 @@ func runRollback(cfg *config.Config) error {
 	fmt.Println()
 	ui.Muted("Rollback functionality coming soon...")
 	return nil
+}
+
+func estimateInstallMinutes(formulaeCount, caskCount, npmCount int) int {
+	totalSeconds := formulaeCount*estimatedSecondsPerFormula +
+		caskCount*estimatedSecondsPerCask +
+		npmCount*estimatedSecondsPerNpm
+	minutes := totalSeconds / 60
+	if minutes < 1 {
+		minutes = 1
+	}
+	return minutes
+}
+
+type categorizedPackages struct {
+	cli  []string
+	cask []string
+	npm  []string
+}
+
+func categorizeSelectedPackages(cfg *config.Config) categorizedPackages {
+	var result categorizedPackages
+
+	if cfg.RemoteConfig != nil {
+		caskSet := make(map[string]bool)
+		for _, c := range cfg.RemoteConfig.Casks {
+			caskSet[c] = true
+		}
+		npmSet := make(map[string]bool)
+		for _, n := range cfg.RemoteConfig.Npm {
+			npmSet[n] = true
+		}
+		for pkg := range cfg.SelectedPkgs {
+			if npmSet[pkg] || config.IsNpmPackage(pkg) {
+				result.npm = append(result.npm, pkg)
+			} else if caskSet[pkg] || config.IsCaskPackage(pkg) {
+				result.cask = append(result.cask, pkg)
+			} else {
+				result.cli = append(result.cli, pkg)
+			}
+		}
+		return result
+	}
+
+	seen := make(map[string]bool)
+	for _, cat := range config.Categories {
+		for _, pkg := range cat.Packages {
+			if cfg.SelectedPkgs[pkg.Name] {
+				seen[pkg.Name] = true
+				if pkg.IsNpm {
+					result.npm = append(result.npm, pkg.Name)
+				} else if pkg.IsCask {
+					result.cask = append(result.cask, pkg.Name)
+				} else {
+					result.cli = append(result.cli, pkg.Name)
+				}
+			}
+		}
+	}
+	for _, pkg := range cfg.OnlinePkgs {
+		if seen[pkg.Name] {
+			continue
+		}
+		if pkg.IsNpm {
+			result.npm = append(result.npm, pkg.Name)
+		} else if pkg.IsCask {
+			result.cask = append(result.cask, pkg.Name)
+		} else {
+			result.cli = append(result.cli, pkg.Name)
+		}
+	}
+	return result
 }
