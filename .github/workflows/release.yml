@@ -52,16 +52,6 @@ jobs:
         run: |
           go build -ldflags="-s -w -X github.com/openbootdotdev/openboot/internal/cli.version=${{ steps.version.outputs.version }}" -trimpath -o openboot-${{ matrix.os }}-${{ matrix.arch }} ./cmd/openboot
 
-      - name: Install UPX
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y upx-ucl
-
-      - name: Compress with UPX
-        run: |
-          upx --best --lzma --force-macos openboot-${{ matrix.os }}-${{ matrix.arch }}
-          ls -lh openboot-${{ matrix.os }}-${{ matrix.arch }}
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
