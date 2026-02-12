@@ -44,6 +44,7 @@ func runDoctor() error {
 
 	results = append(results, checkNetwork()...)
 	results = append(results, checkDiskSpace()...)
+	results = append(results, checkInstallationConflicts()...)
 	results = append(results, checkHomebrew()...)
 	results = append(results, checkGit()...)
 	results = append(results, checkShell()...)
@@ -267,4 +268,63 @@ func checkDiskSpace() []checkResult {
 		name:   fmt.Sprintf("Disk space (%.0f GB free)", availableGB),
 		status: "ok",
 	}}
+}
+
+func checkInstallationConflicts() []checkResult {
+	var results []checkResult
+	var installations []string
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil
+	}
+
+	curlInstallPath := filepath.Join(home, ".openboot", "bin", "openboot")
+	if _, err := os.Stat(curlInstallPath); err == nil {
+		installations = append(installations, curlInstallPath+" (curl install)")
+	}
+
+	if brewPath, err := exec.LookPath("brew"); err == nil {
+		cmd := exec.Command(brewPath, "list", "openboot")
+		if err := cmd.Run(); err == nil {
+			if openbootPath, err := exec.LookPath("openboot"); err == nil {
+				if realPath, err := filepath.EvalSymlinks(openbootPath); err == nil {
+					if strings.Contains(realPath, "Cellar/openboot") || strings.Contains(realPath, "opt/homebrew") {
+						installations = append(installations, openbootPath+" (Homebrew)")
+					}
+				}
+			}
+		}
+	}
+
+	if len(installations) == 0 {
+		return []checkResult{{
+			name:    "Installation",
+			status:  "error",
+			message: "OpenBoot not found in standard locations",
+		}}
+	}
+
+	if len(installations) > 1 {
+		results = append(results, checkResult{
+			name:    "Multiple installations",
+			status:  "warn",
+			message: fmt.Sprintf("found at: %s", strings.Join(installations, ", ")),
+		})
+		results = append(results, checkResult{
+			name:    "Recommendation",
+			status:  "info",
+			message: "keep only one installation method to avoid conflicts",
+		})
+		return results
+	}
+
+	if whichPath, err := exec.LookPath("openboot"); err == nil {
+		results = append(results, checkResult{
+			name:   fmt.Sprintf("Single installation: %s", whichPath),
+			status: "ok",
+		})
+	}
+
+	return results
 }
