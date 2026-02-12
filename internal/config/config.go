@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -90,6 +91,13 @@ func GetPresetNames() []string {
 	return presetOrder
 }
 
+func getAPIBase() string {
+	if base := os.Getenv("OPENBOOT_API_URL"); base != "" {
+		return base
+	}
+	return "https://openboot.dev"
+}
+
 func FetchRemoteConfig(userSlug string, token string) (*RemoteConfig, error) {
 	parts := strings.SplitN(userSlug, "/", 2)
 	username := parts[0]
@@ -98,7 +106,8 @@ func FetchRemoteConfig(userSlug string, token string) (*RemoteConfig, error) {
 		slug = parts[1]
 	}
 
-	url := fmt.Sprintf("https://openboot.dev/%s/%s/config", username, slug)
+	apiBase := getAPIBase()
+	url := fmt.Sprintf("%s/%s/%s/config", apiBase, username, slug)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
