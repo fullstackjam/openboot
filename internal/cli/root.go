@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/openbootdotdev/openboot/internal/auth"
 	"github.com/openbootdotdev/openboot/internal/config"
 	"github.com/openbootdotdev/openboot/internal/installer"
 	"github.com/openbootdotdev/openboot/internal/updater"
@@ -51,7 +52,11 @@ shell configuration, and macOS preferences.`,
 		}
 
 		if cfg.User != "" {
-			rc, err := config.FetchRemoteConfig(cfg.User)
+			var token string
+			if stored, err := auth.LoadToken(); err == nil && stored != nil {
+				token = stored.Token
+			}
+			rc, err := config.FetchRemoteConfig(cfg.User, token)
 			if err != nil {
 				return fmt.Errorf("error fetching remote config: %v", err)
 			}
@@ -95,6 +100,8 @@ func init() {
 	rootCmd.AddCommand(updateCmd)
 	rootCmd.AddCommand(doctorCmd)
 	rootCmd.AddCommand(snapshotCmd)
+	rootCmd.AddCommand(loginCmd)
+	rootCmd.AddCommand(logoutCmd)
 
 	rootCmd.SetUsageTemplate(usageTemplate)
 }

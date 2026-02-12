@@ -90,7 +90,7 @@ func GetPresetNames() []string {
 	return presetOrder
 }
 
-func FetchRemoteConfig(userSlug string) (*RemoteConfig, error) {
+func FetchRemoteConfig(userSlug string, token string) (*RemoteConfig, error) {
 	parts := strings.SplitN(userSlug, "/", 2)
 	username := parts[0]
 	slug := "default"
@@ -100,11 +100,27 @@ func FetchRemoteConfig(userSlug string) (*RemoteConfig, error) {
 
 	url := fmt.Sprintf("https://openboot.dev/%s/%s/config", username, slug)
 
-	resp, err := remoteHTTPClient.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+
+	resp, err := remoteHTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch config: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == 403 {
+		if token == "" {
+			return nil, fmt.Errorf("config %s/%s is private — run 'openboot login' first, then try again", username, slug)
+		}
+		return nil, fmt.Errorf("config %s/%s is private and you don't have access", username, slug)
+	}
 
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("config not found: %s/%s", username, slug)
