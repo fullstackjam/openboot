@@ -16,7 +16,7 @@ presets:
       - htop
       - btop
       - tree
-      - tldr
+      - tealdeer
       - gh
       - git-delta
       - git-lfs
@@ -46,7 +46,7 @@ presets:
       - htop
       - btop
       - tree
-      - tldr
+      - tealdeer
       - gh
       - git-delta
       - git-lfs
@@ -101,7 +101,7 @@ presets:
       - htop
       - btop
       - tree
-      - tldr
+      - tealdeer
       - gh
       - git-delta
       - git-lfs

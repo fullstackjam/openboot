@@ -53,7 +53,13 @@ func ConfigureZshrc(dryRun bool) error {
 
 	additions := `
 # OpenBoot additions
-export PATH="$HOME/.local/bin:$PATH"
+# Homebrew (must come before /usr/bin)
+if [ -f /opt/homebrew/bin/brew ]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [ -f /usr/local/bin/brew ]; then
+  eval "$(/usr/local/bin/brew shellenv)"
+fi
+export PATH="$HOME/.openboot/bin:$HOME/.local/bin:$PATH"
 
 # Modern CLI aliases
 alias ls="eza --icons"

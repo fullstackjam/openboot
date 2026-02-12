@@ -168,7 +168,7 @@ func TestDetectBestPreset_MinimalPreset(t *testing.T) {
 		Packages: PackageSnapshot{
 			Formulae: []string{
 				"curl", "wget", "jq", "yq", "ripgrep", "fd", "bat", "eza",
-				"fzf", "zoxide", "htop", "btop", "tree", "tldr", "gh", "git-delta",
+				"fzf", "zoxide", "htop", "btop", "tree", "tealdeer", "gh", "git-delta",
 			},
 			Casks: []string{},
 			Npm:   []string{},
@@ -189,7 +189,7 @@ func TestDetectBestPreset_DeveloperPreset(t *testing.T) {
 		Packages: PackageSnapshot{
 			Formulae: []string{
 				"curl", "wget", "jq", "yq", "ripgrep", "fd", "bat", "eza",
-				"fzf", "zoxide", "htop", "btop", "tree", "tldr", "gh", "git-delta",
+				"fzf", "zoxide", "htop", "btop", "tree", "tealdeer", "gh", "git-delta",
 				"git-lfs", "lazygit", "pre-commit", "stow", "node", "go", "pnpm",
 				"docker", "docker-compose", "lazydocker", "tmux", "neovim", "httpie",
 			},

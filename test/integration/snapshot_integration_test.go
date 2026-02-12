@@ -189,7 +189,7 @@ func TestIntegration_DetectBestPreset(t *testing.T) {
 			name: "minimal preset packages - many packages from minimal",
 			formulae: []string{
 				"curl", "wget", "jq", "yq", "ripgrep", "fd", "bat", "eza",
-				"fzf", "zoxide", "htop", "btop", "tree", "tldr", "gh", "git-delta",
+				"fzf", "zoxide", "htop", "btop", "tree", "tealdeer", "gh", "git-delta",
 			},
 			casks:        []string{},
 			npm:          []string{},
@@ -199,7 +199,7 @@ func TestIntegration_DetectBestPreset(t *testing.T) {
 			name: "developer preset packages - many packages from developer",
 			formulae: []string{
 				"curl", "wget", "jq", "yq", "ripgrep", "fd", "bat", "eza",
-				"fzf", "zoxide", "htop", "btop", "tree", "tldr", "gh", "git-delta",
+				"fzf", "zoxide", "htop", "btop", "tree", "tealdeer", "gh", "git-delta",
 				"lazygit", "stow", "node", "go", "pnpm", "docker", "docker-compose",
 				"tmux", "neovim", "httpie",
 			},

@@ -28,8 +28,8 @@ categories:
         desc: Resource monitor
       - name: tree
         desc: Directory tree viewer
-      - name: tldr
-        desc: Simplified man pages
+      - name: tealdeer
+        desc: Simplified man pages (tldr)
 
   - name: Git & GitHub
     icon: "🔀"
