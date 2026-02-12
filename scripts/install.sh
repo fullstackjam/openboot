@@ -12,17 +12,22 @@ install_xcode_clt() {
         return 0
     fi
 
-    echo "Installing Xcode Command Line Tools..."
-    echo "(A dialog may appear - please click 'Install')"
+    echo ""
+    echo "⚠️  ACTION REQUIRED"
+    echo ""
+    echo "Xcode Command Line Tools need to be installed."
+    echo "A dialog will appear - please click 'Install' and enter your password."
+    echo ""
+    read -p "Press Enter to launch installer..." -r
     echo ""
 
     xcode-select --install 2>/dev/null || true
 
-    echo "Waiting for Xcode Command Line Tools installation..."
+    echo "Waiting for installation to complete..."
     until xcode-select -p &>/dev/null; do
         sleep 5
     done
-    echo "Xcode Command Line Tools installed!"
+    echo "✓ Xcode Command Line Tools installed!"
     echo ""
 }
 
@@ -116,9 +121,8 @@ main() {
         echo "Would perform:"
         echo "  1. Check/Install Xcode Command Line Tools"
         echo "  2. Check/Install Homebrew"
-        echo "  3. Run: brew tap ${TAP_NAME}"
-        echo "  4. Run: brew install ${BINARY_NAME}"
-        echo "  5. Launch: ${BINARY_NAME}"
+        echo "  3. Run: brew install ${TAP_NAME}/${BINARY_NAME}"
+        echo "  4. Launch: ${BINARY_NAME}"
         echo ""
         echo "To actually install, run without OPENBOOT_DRY_RUN:"
         echo "  curl -fsSL https://openboot.dev/install.sh | bash"
@@ -139,7 +143,7 @@ main() {
         
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             echo "Reinstalling OpenBoot..."
-            brew reinstall openboot
+            brew reinstall ${TAP_NAME}/openboot
             echo ""
             echo "✓ OpenBoot reinstalled!"
         else
@@ -149,11 +153,7 @@ main() {
         echo "Installing OpenBoot via Homebrew..."
         echo ""
         
-        if ! brew tap | grep -q "${TAP_NAME}"; then
-            brew tap "${TAP_NAME}"
-        fi
-        
-        brew install openboot
+        brew install ${TAP_NAME}/openboot
         
         echo ""
         echo "✓ OpenBoot installed!"
