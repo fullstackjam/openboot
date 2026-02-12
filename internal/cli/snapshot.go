@@ -287,6 +287,9 @@ func showSnapshotPreview(snap *snapshot.Snapshot) {
 	fmt.Fprintf(os.Stderr, "  %s %d\n", snapBoldStyle.Render("Taps:"), len(snap.Packages.Taps))
 	printSnapshotList(snap.Packages.Taps, 10)
 
+	fmt.Fprintf(os.Stderr, "  %s %d\n", snapBoldStyle.Render("NPM Packages:"), len(snap.Packages.Npm))
+	printSnapshotList(snap.Packages.Npm, 10)
+
 	fmt.Fprintf(os.Stderr, "  %s %d\n", snapBoldStyle.Render("macOS Preferences:"), len(snap.MacOSPrefs))
 	for _, pref := range snap.MacOSPrefs {
 		fmt.Fprintf(os.Stderr, "    %s.%s = %s\n", pref.Domain, pref.Key, pref.Value)

@@ -42,9 +42,11 @@ shell configuration, and macOS preferences.`,
 			if email := os.Getenv("OPENBOOT_GIT_EMAIL"); email != "" {
 				cfg.GitEmail = email
 			}
-			if preset := os.Getenv("OPENBOOT_PRESET"); preset != "" && cfg.Preset == "" {
-				cfg.Preset = preset
-			}
+		}
+
+		// Read OPENBOOT_PRESET env var (works in both interactive and silent modes)
+		if preset := os.Getenv("OPENBOOT_PRESET"); preset != "" && cfg.Preset == "" {
+			cfg.Preset = preset
 		}
 
 		if user := os.Getenv("OPENBOOT_USER"); user != "" && cfg.User == "" {
