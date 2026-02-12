@@ -14,7 +14,7 @@ import (
 	"github.com/openbootdotdev/openboot/internal/ui"
 )
 
-const maxWorkers = 4
+const maxWorkers = 1
 
 type OutdatedPackage struct {
 	Name    string
