@@ -111,12 +111,6 @@ jobs:
           body: |
             ## Installation
 
-            ### Homebrew
-            ```bash
-            brew install openboot
-            ```
-
-            ### Direct Download
             ```bash
             curl -fsSL https://openboot.dev/install | bash
             ```
