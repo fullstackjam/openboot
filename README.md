@@ -1,25 +1,15 @@
 # OpenBoot
 
 > One command. Your Mac is ready to code.
+> **[openboot.dev](https://openboot.dev)**
 
 <p align="center">
   <img src="demo.gif" alt="OpenBoot Demo" width="800" />
 </p>
 
-Setting up a new Mac still wastes hours. You manually install tools one by one, search for that dotfiles repo link, configure macOS defaults, set up your shell... and somehow it's 3pm.
+Setting up a new Mac still wastes hours. You manually install tools one by one, search for that dotfiles repo, configure macOS defaults, set up your shell... and somehow it's 3pm.
 
-**OpenBoot does it all in one command:**
-
-```bash
-curl -fsSL openboot.dev/install | bash
-```
-
-**What you get:**
-- ✨ **5 minutes, not 5 hours** — Interactive TUI guides you through everything
-- 🎯 **Pick what you need** — 70+ curated dev tools across 13 categories (Node, Docker, VS Code, Warp...)
-- 💾 **Remember your setup** — Snapshot your current Mac, restore it anywhere, or share with your team
-- 🚀 **Install fast** — CLI tools install 4× in parallel, GUI apps handle password prompts smoothly
-- 🔒 **Your data stays yours** — Zero telemetry, zero tracking, fully open source
+**OpenBoot** gives you a CLI and a [Web Dashboard](https://openboot.dev/dashboard) to handle all of it — whether you're setting up a fresh machine, capturing your current one, or standardizing your team's environment.
 
 <p align="center">
   <a href="https://github.com/openbootdotdev/openboot/releases"><img src="https://img.shields.io/github/v/release/openbootdotdev/openboot" alt="Release"></a>
@@ -27,42 +17,65 @@ curl -fsSL openboot.dev/install | bash
   <a href="https://codecov.io/gh/openbootdotdev/openboot"><img src="https://codecov.io/gh/openbootdotdev/openboot/branch/main/graph/badge.svg" alt="codecov"></a>
 </p>
 
-## Quick Start
+## Two Paths, One Tool
 
-Run the command above and OpenBoot will guide you through an interactive setup:
-1. Choose a preset (minimal, developer, or full)
+### 🖥️ Fresh Mac? Install everything.
+
+Run one command, pick your tools in the TUI, and you're done.
+
+```bash
+curl -fsSL openboot.dev/install | bash
+```
+
+1. Choose a preset (`minimal`, `developer`, or `full`)
 2. Customize your package selection in a searchable TUI
 3. Sit back while everything installs
 
-**Done.** Your shell, dotfiles, and macOS preferences are configured.
+**Done.** Shell, dotfiles, macOS preferences — all configured.
 
-<details>
-<summary><strong>📸 Already have a Mac set up? Snapshot it</strong></summary>
+### 📸 Already set up? Capture and share.
+
+Snapshot your current Mac and turn it into a shareable config on [openboot.dev](https://openboot.dev).
 
 ```bash
 curl -fsSL openboot.dev/install | bash -s -- snapshot
 ```
 
-Captures your Homebrew packages, macOS preferences, shell config, and git settings. Save locally with `--local` or upload to share.
+Captures your Homebrew packages, macOS preferences, shell config, and git settings. Upload to openboot.dev to get a one-line install URL, or save locally with `--local`. [Learn more →](https://openboot.dev/docs/snapshot)
 
-</details>
+---
 
-<details>
-<summary><strong>👥 Team onboarding? Share a config</strong></summary>
+## Web Dashboard
 
-Create a config at [openboot.dev/dashboard](https://openboot.dev/dashboard), then have your team run:
+The [openboot.dev dashboard](https://openboot.dev/dashboard) is where you manage and share your configs — no CLI knowledge required.
 
-```bash
-curl -fsSL openboot.dev/YOUR_USERNAME | bash
-```
+- ✨ **Visual Config Builder** — Create setups by clicking, not typing YAML
+- 📦 **Import from Brewfile** — Drop your existing Brewfile and it maps everything automatically
+- 🔗 **One-Line Install URLs** — Every config gets a shareable URL: `openboot.dev/yourname/my-setup`
+- 🔍 **Package Search** — Browse and search thousands of Homebrew packages and casks
+- 👥 **Team Configs** — Create standard environments your whole team installs with one command
 
-Import from an existing Brewfile, pick packages from the catalog, or duplicate an existing config.
+Sign in with GitHub at [openboot.dev](https://openboot.dev) to get started.
 
-</details>
+## For Teams
+
+Standardize your dev environment so every developer — new or existing — works with the same tools. [Full guide →](https://openboot.dev/docs/teams)
+
+**How it works:**
+
+1. **Create a team config** on the [dashboard](https://openboot.dev/dashboard) — or snapshot a reference machine and upload it
+2. **Share one URL** in your README or onboarding docs:
+   ```bash
+   curl -fsSL openboot.dev/yourteam/frontend/install | bash
+   ```
+3. **New developer joins** → runs the command → ready to code in minutes
+4. **Stack changes?** Update the config in the dashboard — the URL stays the same
+
+---
 
 ## Choose Your Preset
 
-Start with a curated preset, then customize it in the TUI:
+Start with a curated preset, then customize it in the TUI or on the [dashboard](https://openboot.dev/dashboard). [Compare presets →](https://openboot.dev/docs/presets)
 
 | Preset | Best For | Includes |
 |--------|----------|----------|
@@ -88,13 +101,13 @@ OpenBoot handles everything a traditional Mac setup requires:
 
 | | OpenBoot | Brewfile | Strap | chezmoi | nix-darwin |
 |---|:---:|:---:|:---:|:---:|:---:|
-| Interactive TUI | ✅ | — | — | — | — |
 | Web dashboard | ✅ | — | — | — | — |
+| Interactive TUI | ✅ | — | — | — | — |
 | Team config sharing | ✅ | — | — | — | — |
 | One-command setup | ✅ | — | ✅ | ✅ | — |
 | Learning curve | Low | Low | Low | High | Very High |
 
-OpenBoot combines the simplicity of Brewfile with the power of dotfiles managers, plus team sharing built in.
+OpenBoot combines the simplicity of Brewfile with the power of dotfiles managers, plus a web dashboard and team sharing built in.
 
 </details>
 
@@ -118,6 +131,7 @@ curl -fsSL openboot.dev/install | bash -s -- --preset developer --silent
 
 ```bash
 openboot                 # Interactive setup
+openboot snapshot        # Capture your current setup
 openboot doctor          # Check system health
 openboot update          # Update Homebrew and packages
 openboot update --dry-run  # Preview updates
@@ -174,6 +188,10 @@ No. Zero telemetry, zero analytics. Fully open source (MIT license).
 
 ---
 
+## Docs & Links
+
+📖 Full documentation at **[openboot.dev/docs](https://openboot.dev/docs)** — [Quick Start](https://openboot.dev/docs/quick-start) · [Presets](https://openboot.dev/docs/presets) · [Snapshot](https://openboot.dev/docs/snapshot) · [Custom Configs](https://openboot.dev/docs/custom-configs) · [Teams](https://openboot.dev/docs/teams)
+
 ## Contributing
 
 Found a bug or want to add a feature? [Open an issue](https://github.com/openbootdotdev/openboot/issues) or submit a PR.
@@ -192,7 +210,6 @@ go build -o openboot ./cmd/openboot
 
 ---
 
-**Related:**  
-[openboot.dev](https://openboot.dev) · [Dotfiles template](https://github.com/openbootdotdev/dotfiles)
+**[openboot.dev](https://openboot.dev)** · [Dashboard](https://openboot.dev/dashboard) · [Docs](https://openboot.dev/docs) · [Dotfiles template](https://github.com/openbootdotdev/dotfiles)
 
 **License:** MIT
