@@ -155,21 +155,14 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "version_clean=${VERSION#v}" >> $GITHUB_OUTPUT
 
-      - name: Download release binaries
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          wget -O openboot-darwin-arm64 "https://github.com/openbootdotdev/openboot/releases/download/${VERSION}/openboot-darwin-arm64"
-          wget -O openboot-darwin-amd64 "https://github.com/openbootdotdev/openboot/releases/download/${VERSION}/openboot-darwin-amd64"
-
-      - name: Calculate SHA256
+      - name: Download release binaries and calculate SHA256
         id: sha
         run: |
-          ARM64_SHA=$(sha256sum openboot-darwin-arm64 | cut -d' ' -f1)
-          AMD64_SHA=$(sha256sum openboot-darwin-amd64 | cut -d' ' -f1)
-          echo "arm64_sha=${ARM64_SHA}" >> $GITHUB_OUTPUT
-          echo "amd64_sha=${AMD64_SHA}" >> $GITHUB_OUTPUT
-          echo "ARM64 SHA256: ${ARM64_SHA}"
-          echo "AMD64 SHA256: ${AMD64_SHA}"
+          VERSION="${{ steps.version.outputs.version }}"
+          curl -sL -o openboot-darwin-arm64 "https://github.com/openbootdotdev/openboot/releases/download/${VERSION}/openboot-darwin-arm64"
+          curl -sL -o openboot-darwin-amd64 "https://github.com/openbootdotdev/openboot/releases/download/${VERSION}/openboot-darwin-amd64"
+          echo "arm64=$(sha256sum openboot-darwin-arm64 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+          echo "amd64=$(sha256sum openboot-darwin-amd64 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
 
       - name: Checkout homebrew-tap
         uses: actions/checkout@v4
@@ -178,38 +171,44 @@ jobs:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: homebrew-tap
 
-      - name: Update Formula
+      - name: Update formula
         run: |
-          cd homebrew-tap
-          VERSION="${{ steps.version.outputs.version_clean }}"
-          ARM64_SHA="${{ steps.sha.outputs.arm64_sha }}"
-          AMD64_SHA="${{ steps.sha.outputs.amd64_sha }}"
-          
-          cat > Formula/openboot.rb << EOF
+          cat > homebrew-tap/Formula/openboot.rb << 'FORMULA'
           class Openboot < Formula
-            desc "One command to set up your Mac development environment"
+            desc "Set up your macOS dev environment in one command"
             homepage "https://openboot.dev"
-            version "${VERSION}"
+            version "VERSION_PLACEHOLDER"
             license "MIT"
-          
-            if Hardware::CPU.arm?
-              url "https://github.com/openbootdotdev/openboot/releases/download/v${VERSION}/openboot-darwin-arm64"
-              sha256 "${ARM64_SHA}"
-            else
-              url "https://github.com/openbootdotdev/openboot/releases/download/v${VERSION}/openboot-darwin-amd64"
-              sha256 "${AMD64_SHA}"
+
+            depends_on :macos
+
+            on_arm do
+              url "https://github.com/openbootdotdev/openboot/releases/download/vVERSION_PLACEHOLDER/openboot-darwin-arm64"
+              sha256 "ARM64_SHA_PLACEHOLDER"
             end
-          
+
+            on_intel do
+              url "https://github.com/openbootdotdev/openboot/releases/download/vVERSION_PLACEHOLDER/openboot-darwin-amd64"
+              sha256 "AMD64_SHA_PLACEHOLDER"
+            end
+
             def install
-              bin.install "openboot-darwin-arm64" => "openboot" if Hardware::CPU.arm?
-              bin.install "openboot-darwin-amd64" => "openboot" if Hardware::CPU.intel?
+              if Hardware::CPU.arm?
+                bin.install "openboot-darwin-arm64" => "openboot"
+              else
+                bin.install "openboot-darwin-amd64" => "openboot"
+              end
             end
-          
+
             test do
               assert_match version.to_s, shell_output("#{bin}/openboot version")
             end
           end
-          EOF
+          FORMULA
+          sed -i 's/VERSION_PLACEHOLDER/${{ steps.version.outputs.version_clean }}/g' homebrew-tap/Formula/openboot.rb
+          sed -i 's/ARM64_SHA_PLACEHOLDER/${{ steps.sha.outputs.arm64 }}/g' homebrew-tap/Formula/openboot.rb
+          sed -i 's/AMD64_SHA_PLACEHOLDER/${{ steps.sha.outputs.amd64 }}/g' homebrew-tap/Formula/openboot.rb
+          sed -i 's/^          //' homebrew-tap/Formula/openboot.rb
 
       - name: Commit and push
         run: |
@@ -217,5 +216,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/openboot.rb
-          git commit -m "Update openboot to ${{ steps.version.outputs.version }}"
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "openboot ${{ steps.version.outputs.version_clean }}"
           git push
