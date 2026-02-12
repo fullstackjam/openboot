@@ -131,8 +131,16 @@ func FetchRemoteConfig(userSlug string, token string) (*RemoteConfig, error) {
 		return nil, fmt.Errorf("config %s/%s is private and you don't have access", username, slug)
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode == 404 {
 		return nil, fmt.Errorf("config not found: %s/%s", username, slug)
+	}
+
+	if resp.StatusCode >= 500 {
+		return nil, fmt.Errorf("server error while fetching config %s/%s (status: %d)", username, slug, resp.StatusCode)
+	}
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("failed to fetch config %s/%s (status: %d)", username, slug, resp.StatusCode)
 	}
 
 	var rc RemoteConfig
