@@ -139,3 +139,83 @@ jobs:
             |----------|--------------|----------|
             | macOS | Apple Silicon (M1/M2/M3) | `openboot-darwin-arm64` |
             | macOS | Intel | `openboot-darwin-amd64` |
+
+  update-homebrew-tap:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "version_clean=${VERSION#v}" >> $GITHUB_OUTPUT
+
+      - name: Download release binaries
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          wget -O openboot-darwin-arm64 "https://github.com/openbootdotdev/openboot/releases/download/${VERSION}/openboot-darwin-arm64"
+          wget -O openboot-darwin-amd64 "https://github.com/openbootdotdev/openboot/releases/download/${VERSION}/openboot-darwin-amd64"
+
+      - name: Calculate SHA256
+        id: sha
+        run: |
+          ARM64_SHA=$(sha256sum openboot-darwin-arm64 | cut -d' ' -f1)
+          AMD64_SHA=$(sha256sum openboot-darwin-amd64 | cut -d' ' -f1)
+          echo "arm64_sha=${ARM64_SHA}" >> $GITHUB_OUTPUT
+          echo "amd64_sha=${AMD64_SHA}" >> $GITHUB_OUTPUT
+          echo "ARM64 SHA256: ${ARM64_SHA}"
+          echo "AMD64 SHA256: ${AMD64_SHA}"
+
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v4
+        with:
+          repository: openbootdotdev/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update Formula
+        run: |
+          cd homebrew-tap
+          VERSION="${{ steps.version.outputs.version_clean }}"
+          ARM64_SHA="${{ steps.sha.outputs.arm64_sha }}"
+          AMD64_SHA="${{ steps.sha.outputs.amd64_sha }}"
+          
+          cat > Formula/openboot.rb << EOF
+          class Openboot < Formula
+            desc "One command to set up your Mac development environment"
+            homepage "https://openboot.dev"
+            version "${VERSION}"
+            license "MIT"
+          
+            if Hardware::CPU.arm?
+              url "https://github.com/openbootdotdev/openboot/releases/download/v${VERSION}/openboot-darwin-arm64"
+              sha256 "${ARM64_SHA}"
+            else
+              url "https://github.com/openbootdotdev/openboot/releases/download/v${VERSION}/openboot-darwin-amd64"
+              sha256 "${AMD64_SHA}"
+            end
+          
+            def install
+              bin.install "openboot-darwin-arm64" => "openboot" if Hardware::CPU.arm?
+              bin.install "openboot-darwin-amd64" => "openboot" if Hardware::CPU.intel?
+            end
+          
+            test do
+              assert_match version.to_s, shell_output("#{bin}/openboot version")
+            end
+          end
+          EOF
+
+      - name: Commit and push
+        run: |
+          cd homebrew-tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/openboot.rb
+          git commit -m "Update openboot to ${{ steps.version.outputs.version }}"
+          git push
