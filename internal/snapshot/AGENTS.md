@@ -52,8 +52,21 @@ Each step is independent. Failures are non-fatal (captured as empty).
 }
 ```
 
+## RESTORE PIPELINE
+
+`snapshot --import` restores:
+1. Taps → `brew tap`
+2. Formulae/Casks → `brew install` (via installer.RunFromSnapshot)
+3. NPM packages → `npm install -g`
+4. Git config → `git config --global user.name/email` (skips if already set)
+5. Shell → Installs Oh-My-Zsh, sets ZSH_THEME and plugins in .zshrc
+6. macOS preferences → `defaults write`
+
+Snapshot data is mapped to `config.SnapshotGitConfig` and `config.SnapshotShellConfig` in `cli/snapshot.go`, then consumed by `installer.stepRestoreGit` and `installer.stepRestoreShell`.
+
 ## WHEN MODIFYING
 
 - Adding capture step: Add to `CaptureWithProgress()`, update `totalSteps`, add to `Snapshot` struct
+- Adding restore step: Add to `installer.RunFromSnapshot()`, create `config.Snapshot*Config` type, wire in `cli/snapshot.go`
 - Adding preset detection: Modify `DetectBestPreset()` scoring in `match.go`
 - Tests: Table-driven with testify. `capture_test.go` mocks command output. `match_test.go` tests Jaccard scoring.

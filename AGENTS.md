@@ -16,16 +16,17 @@ openboot/
 ├── cmd/openboot/         # main.go → cli.Execute()
 ├── internal/
 │   ├── auth/             # OAuth-like login, token in ~/.openboot/auth.json (0600)
-│   ├── brew/             # Homebrew ops, parallel install (4 workers), retry logic
-│   ├── cli/              # Cobra commands: root, snapshot, doctor, update, version
+│   ├── brew/             # Homebrew ops, parallel install (4 workers), retry logic, uninstall
+│   ├── cleaner/          # Diff current system vs desired state, remove extra packages
+│   ├── cli/              # Cobra commands: root, snapshot, doctor, clean, update, version
 │   ├── config/           # Embedded YAML (packages + presets), remote config fetch
 │   │   └── data/         # packages.yaml (9 categories), presets.yaml (3 presets)
 │   ├── dotfiles/         # Clone + stow/symlink with .openboot.bak backup
-│   ├── installer/        # Main orchestrator: 7-step wizard (693 lines)
+│   ├── installer/        # Main orchestrator: 7-step wizard + snapshot restore (git/shell/packages)
 │   ├── macos/            # `defaults write` preferences, app restart
-│   ├── npm/              # Batch install with sequential fallback
+│   ├── npm/              # Batch install with sequential fallback, uninstall
 │   ├── search/           # Online search via openboot.dev API (8s timeout)
-│   ├── shell/            # Oh-My-Zsh install, .zshrc config
+│   ├── shell/            # Oh-My-Zsh install, .zshrc config, snapshot restore (theme/plugins)
 │   ├── snapshot/         # Capture/match/restore environment state (see subdir AGENTS.md)
 │   ├── system/           # RunCommand/RunCommandSilent, arch detection, git config
 │   ├── ui/               # TUI components (see subdir AGENTS.md)
@@ -45,9 +46,11 @@ openboot/
 | Add CLI command | `internal/cli/` | Register in root.go init(), follow cobra pattern |
 | Add package category | `internal/config/data/packages.yaml` | Rebuild after changing embedded YAML |
 | Change install flow | `internal/installer/installer.go` | 7 steps: homebrew → git → preset → packages → shell → macos → dotfiles |
+| Change clean/uninstall | `internal/cleaner/cleaner.go` | Diffs current vs desired, calls brew/npm Uninstall |
 | Add TUI component | `internal/ui/` | Use bubbletea Model pattern, lipgloss styling |
-| Change brew behavior | `internal/brew/brew.go` | Parallel workers, StickyProgress for output |
+| Change brew behavior | `internal/brew/brew.go` | Parallel workers, StickyProgress for output, Uninstall/UninstallCask |
 | Add snapshot data | `internal/snapshot/capture.go` | Add to CaptureWithProgress steps |
+| Change snapshot restore | `internal/installer/installer.go` | stepRestoreGit, stepRestoreShell + packages/shell/macos |
 | Update self-update | `internal/updater/updater.go` | AutoUpgrade() called from root.go RunE |
 | Modify presets | `internal/config/data/presets.yaml` | 3 presets: minimal, developer, full |
 
@@ -64,6 +67,7 @@ cli (root)
 │   ├── shell (no deps)
 │   ├── system (no deps)
 │   └── ui → config, search, snapshot, system
+├── cleaner → brew, npm, snapshot, ui
 ├── updater → ui
 ├── auth → ui
 └── snapshot → config, macos

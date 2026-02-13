@@ -45,6 +45,8 @@ curl -fsSL openboot.dev/install.sh | bash
 - **macOS preferences** — Developer-friendly defaults (Dock, Finder, keyboard)
 - **Git identity** — Configure name and email during setup
 - **Smart installs** — Detects already-installed tools, skips them
+- **Clean up** — Remove packages not in your config with `openboot clean`
+- **Full snapshot restore** — Restores packages, git config, shell theme & plugins
 
 ## Web Dashboard
 
@@ -75,7 +77,20 @@ Already set up? Capture your environment and share it.
 openboot snapshot
 ```
 
-Captures Homebrew packages, macOS preferences, shell config, and git settings. Upload to [openboot.dev](https://openboot.dev) for a shareable install URL, or save locally with `--local`. [Learn more →](https://openboot.dev/docs/snapshot)
+Captures Homebrew packages, macOS preferences, shell config (Oh-My-Zsh theme & plugins), and git settings. Upload to [openboot.dev](https://openboot.dev) for a shareable install URL, or save locally with `--local`.
+
+Restoring from a snapshot now fully restores your environment — packages, git identity, shell theme, and plugins. [Learn more →](https://openboot.dev/docs/snapshot)
+
+### Clean
+
+Drifted from your config? Remove extra packages.
+
+```bash
+openboot clean                        # Compare against local snapshot
+openboot clean --user yourname        # Compare against cloud config
+openboot clean --from my-setup.json   # Compare against a snapshot file
+openboot clean --dry-run              # Preview what would be removed
+```
 
 ## For Teams
 
@@ -128,6 +143,7 @@ curl -fsSL openboot.dev/install.sh | bash -s -- --preset developer --silent
 ```bash
 openboot                 # Interactive setup
 openboot snapshot        # Capture your current setup
+openboot clean           # Remove packages not in your config
 openboot doctor          # Check system health
 openboot update          # Update Homebrew and packages
 openboot update --dry-run  # Preview updates
