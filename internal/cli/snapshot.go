@@ -371,6 +371,22 @@ func runSnapshotImport(importPath string, dryRun bool) error {
 		snapBoldStyle.Render("Packages:"),
 		len(snap.Packages.Formulae), len(snap.Packages.Casks),
 		len(snap.Packages.Npm), len(snap.Packages.Taps))
+	if snap.Git.UserName != "" || snap.Git.UserEmail != "" {
+		fmt.Fprintf(os.Stderr, "  %s %s <%s>\n",
+			snapBoldStyle.Render("Git:"), snap.Git.UserName, snap.Git.UserEmail)
+	}
+	if snap.Shell.OhMyZsh {
+		theme := snap.Shell.Theme
+		if theme == "" {
+			theme = "default"
+		}
+		plugins := "none"
+		if len(snap.Shell.Plugins) > 0 {
+			plugins = strings.Join(snap.Shell.Plugins, ", ")
+		}
+		fmt.Fprintf(os.Stderr, "  %s Oh-My-Zsh (theme: %s, plugins: %s)\n",
+			snapBoldStyle.Render("Shell:"), theme, plugins)
+	}
 	fmt.Fprintln(os.Stderr)
 
 	edited, confirmed, err := ui.RunSnapshotEditor(snap)
@@ -425,32 +441,43 @@ func runSnapshotImport(importPath string, dryRun bool) error {
 		}
 	}
 
-	cfg := &config.Config{DryRun: dryRun}
-	cfg.SelectedPkgs = make(map[string]bool)
+	importCfg := &config.Config{DryRun: dryRun}
+	importCfg.SelectedPkgs = make(map[string]bool)
 
 	for _, name := range edited.Packages.Formulae {
 		if catalogSet[name] {
-			cfg.SelectedPkgs[name] = true
+			importCfg.SelectedPkgs[name] = true
 		} else {
-			cfg.OnlinePkgs = append(cfg.OnlinePkgs, config.Package{Name: name})
+			importCfg.OnlinePkgs = append(importCfg.OnlinePkgs, config.Package{Name: name})
 		}
 	}
 	for _, name := range edited.Packages.Casks {
 		if catalogSet[name] {
-			cfg.SelectedPkgs[name] = true
+			importCfg.SelectedPkgs[name] = true
 		} else {
-			cfg.OnlinePkgs = append(cfg.OnlinePkgs, config.Package{Name: name, IsCask: true})
+			importCfg.OnlinePkgs = append(importCfg.OnlinePkgs, config.Package{Name: name, IsCask: true})
 		}
 	}
 	for _, name := range edited.Packages.Npm {
 		if catalogSet[name] {
-			cfg.SelectedPkgs[name] = true
+			importCfg.SelectedPkgs[name] = true
 		} else {
-			cfg.OnlinePkgs = append(cfg.OnlinePkgs, config.Package{Name: name, IsNpm: true})
+			importCfg.OnlinePkgs = append(importCfg.OnlinePkgs, config.Package{Name: name, IsNpm: true})
 		}
 	}
 
-	cfg.SnapshotTaps = edited.Packages.Taps
+	importCfg.SnapshotTaps = edited.Packages.Taps
 
-	return installer.RunFromSnapshot(cfg)
+	importCfg.SnapshotGit = &config.SnapshotGitConfig{
+		UserName:  edited.Git.UserName,
+		UserEmail: edited.Git.UserEmail,
+	}
+
+	importCfg.SnapshotShell = &config.SnapshotShellConfig{
+		OhMyZsh: edited.Shell.OhMyZsh,
+		Theme:   edited.Shell.Theme,
+		Plugins: edited.Shell.Plugins,
+	}
+
+	return installer.RunFromSnapshot(importCfg)
 }

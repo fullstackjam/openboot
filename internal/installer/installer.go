@@ -707,8 +707,20 @@ func RunFromSnapshot(cfg *config.Config) error {
 		ui.Error(fmt.Sprintf("npm package installation failed: %v", err))
 	}
 
-	if err := stepShell(cfg); err != nil {
-		ui.Error(fmt.Sprintf("Shell setup failed: %v", err))
+	if cfg.SnapshotGit != nil {
+		if err := stepRestoreGit(cfg); err != nil {
+			ui.Error(fmt.Sprintf("Git restore failed: %v", err))
+		}
+	}
+
+	if cfg.SnapshotShell != nil && cfg.SnapshotShell.OhMyZsh {
+		if err := stepRestoreShell(cfg); err != nil {
+			ui.Error(fmt.Sprintf("Shell restore failed: %v", err))
+		}
+	} else {
+		if err := stepShell(cfg); err != nil {
+			ui.Error(fmt.Sprintf("Shell setup failed: %v", err))
+		}
 	}
 
 	if err := stepMacOS(cfg); err != nil {
@@ -716,6 +728,75 @@ func RunFromSnapshot(cfg *config.Config) error {
 	}
 
 	showCompletion(cfg)
+	return nil
+}
+
+func stepRestoreGit(cfg *config.Config) error {
+	ui.Header("Restore: Git Configuration")
+	fmt.Println()
+
+	git := cfg.SnapshotGit
+	if git.UserName == "" && git.UserEmail == "" {
+		ui.Muted("No git config in snapshot, skipping")
+		fmt.Println()
+		return nil
+	}
+
+	existingName, existingEmail := system.GetExistingGitConfig()
+
+	if existingName != "" && existingEmail != "" {
+		ui.Success(fmt.Sprintf("✓ Already configured: %s <%s>", existingName, existingEmail))
+		fmt.Println()
+		return nil
+	}
+
+	if cfg.DryRun {
+		if existingName == "" && git.UserName != "" {
+			fmt.Printf("[DRY-RUN] Would set git user.name = %s\n", git.UserName)
+		}
+		if existingEmail == "" && git.UserEmail != "" {
+			fmt.Printf("[DRY-RUN] Would set git user.email = %s\n", git.UserEmail)
+		}
+		fmt.Println()
+		return nil
+	}
+
+	if existingName == "" && git.UserName != "" {
+		if err := system.ConfigureGit(git.UserName, git.UserEmail); err != nil {
+			return fmt.Errorf("failed to restore git config: %w", err)
+		}
+	}
+
+	ui.Success(fmt.Sprintf("Git restored: %s <%s>", git.UserName, git.UserEmail))
+	fmt.Println()
+	return nil
+}
+
+func stepRestoreShell(cfg *config.Config) error {
+	ui.Header("Restore: Shell Configuration")
+	fmt.Println()
+
+	shellCfg := cfg.SnapshotShell
+
+	if cfg.DryRun {
+		fmt.Println("[DRY-RUN] Would restore shell config from snapshot")
+	}
+
+	ui.Info(fmt.Sprintf("Theme: %s, Plugins: %v", shellCfg.Theme, shellCfg.Plugins))
+	fmt.Println()
+
+	if err := shell.RestoreFromSnapshot(shellCfg.OhMyZsh, shellCfg.Theme, shellCfg.Plugins, cfg.DryRun); err != nil {
+		return err
+	}
+
+	if err := shell.ConfigureZshrc(cfg.DryRun); err != nil {
+		return fmt.Errorf("failed to configure .zshrc: %w", err)
+	}
+
+	if !cfg.DryRun {
+		ui.Success("Shell configuration restored")
+	}
+	fmt.Println()
 	return nil
 }
 

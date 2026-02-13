@@ -42,6 +42,21 @@ type Config struct {
 	User         string
 	RemoteConfig *RemoteConfig
 	PackagesOnly bool
+
+	SnapshotShell    *SnapshotShellConfig
+	SnapshotGit      *SnapshotGitConfig
+	SnapshotDotfiles string
+}
+
+type SnapshotShellConfig struct {
+	OhMyZsh bool
+	Theme   string
+	Plugins []string
+}
+
+type SnapshotGitConfig struct {
+	UserName  string
+	UserEmail string
 }
 
 type RemoteConfig struct {
