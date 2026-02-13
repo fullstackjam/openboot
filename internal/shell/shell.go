@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strings"
 )
 
 func IsOhMyZshInstalled() bool {
@@ -116,4 +118,85 @@ func SetDefaultShell(dryRun bool) error {
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	return cmd.Run()
+}
+
+func RestoreFromSnapshot(ohMyZsh bool, theme string, plugins []string, dryRun bool) error {
+	if !ohMyZsh {
+		return nil
+	}
+
+	if !IsOhMyZshInstalled() {
+		if dryRun {
+			fmt.Println("[DRY-RUN] Would install Oh-My-Zsh")
+		} else {
+			if err := InstallOhMyZsh(dryRun); err != nil {
+				return fmt.Errorf("failed to install Oh-My-Zsh: %w", err)
+			}
+		}
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("cannot determine home directory: %w", err)
+	}
+	zshrcPath := filepath.Join(home, ".zshrc")
+
+	if _, err := os.Stat(zshrcPath); os.IsNotExist(err) {
+		if dryRun {
+			fmt.Printf("[DRY-RUN] Would create %s\n", zshrcPath)
+			return nil
+		}
+		template := fmt.Sprintf(`export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME="%s"
+plugins=(%s)
+source $ZSH/oh-my-zsh.sh
+`, theme, strings.Join(plugins, " "))
+		if err := os.WriteFile(zshrcPath, []byte(template), 0644); err != nil {
+			return fmt.Errorf("failed to create .zshrc: %w", err)
+		}
+		return nil
+	}
+
+	if dryRun {
+		if theme != "" {
+			fmt.Printf("[DRY-RUN] Would set ZSH_THEME=\"%s\"\n", theme)
+		}
+		if len(plugins) > 0 {
+			fmt.Printf("[DRY-RUN] Would set plugins=(%s)\n", strings.Join(plugins, " "))
+		}
+		return nil
+	}
+
+	content, err := os.ReadFile(zshrcPath)
+	if err != nil {
+		return fmt.Errorf("failed to read .zshrc: %w", err)
+	}
+
+	updated := string(content)
+
+	if theme != "" {
+		themeRe := regexp.MustCompile(`ZSH_THEME="[^"]*"`)
+		newTheme := fmt.Sprintf(`ZSH_THEME="%s"`, theme)
+		if themeRe.MatchString(updated) {
+			updated = themeRe.ReplaceAllString(updated, newTheme)
+		} else {
+			updated = newTheme + "\n" + updated
+		}
+	}
+
+	if len(plugins) > 0 {
+		pluginsRe := regexp.MustCompile(`plugins=\([^)]*\)`)
+		newPlugins := fmt.Sprintf("plugins=(%s)", strings.Join(plugins, " "))
+		if pluginsRe.MatchString(updated) {
+			updated = pluginsRe.ReplaceAllString(updated, newPlugins)
+		} else {
+			updated = newPlugins + "\n" + updated
+		}
+	}
+
+	if err := os.WriteFile(zshrcPath, []byte(updated), 0644); err != nil {
+		return fmt.Errorf("failed to write .zshrc: %w", err)
+	}
+
+	return nil
 }

@@ -169,3 +169,101 @@ func TestSetDefaultShell_DryRun(t *testing.T) {
 	err := SetDefaultShell(true)
 	assert.NoError(t, err)
 }
+
+func TestRestoreFromSnapshot_NoOhMyZsh(t *testing.T) {
+	err := RestoreFromSnapshot(false, "robbyrussell", []string{"git"}, true)
+	assert.NoError(t, err)
+}
+
+func TestRestoreFromSnapshot_DryRun_ExistingZshrc(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	zshrcPath := filepath.Join(home, ".zshrc")
+	content := `export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME="robbyrussell"
+plugins=(git)
+source $ZSH/oh-my-zsh.sh
+`
+	require.NoError(t, os.WriteFile(zshrcPath, []byte(content), 0644))
+
+	omzDir := filepath.Join(home, ".oh-my-zsh")
+	require.NoError(t, os.MkdirAll(omzDir, 0755))
+
+	err := RestoreFromSnapshot(true, "agnoster", []string{"git", "zsh-autosuggestions"}, true)
+	assert.NoError(t, err)
+
+	result, err := os.ReadFile(zshrcPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(result), `ZSH_THEME="robbyrussell"`)
+	assert.Contains(t, string(result), `plugins=(git)`)
+}
+
+func TestRestoreFromSnapshot_UpdatesExistingZshrc(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	zshrcPath := filepath.Join(home, ".zshrc")
+	content := `export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME="robbyrussell"
+plugins=(git)
+source $ZSH/oh-my-zsh.sh
+`
+	require.NoError(t, os.WriteFile(zshrcPath, []byte(content), 0644))
+
+	omzDir := filepath.Join(home, ".oh-my-zsh")
+	require.NoError(t, os.MkdirAll(omzDir, 0755))
+
+	err := RestoreFromSnapshot(true, "agnoster", []string{"git", "zsh-autosuggestions", "docker"}, false)
+	assert.NoError(t, err)
+
+	result, err := os.ReadFile(zshrcPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(result), `ZSH_THEME="agnoster"`)
+	assert.Contains(t, string(result), `plugins=(git zsh-autosuggestions docker)`)
+	assert.NotContains(t, string(result), `ZSH_THEME="robbyrussell"`)
+}
+
+func TestRestoreFromSnapshot_CreatesZshrcIfMissing(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	omzDir := filepath.Join(home, ".oh-my-zsh")
+	require.NoError(t, os.MkdirAll(omzDir, 0755))
+
+	zshrcPath := filepath.Join(home, ".zshrc")
+	assert.NoFileExists(t, zshrcPath)
+
+	err := RestoreFromSnapshot(true, "powerlevel10k", []string{"git", "docker"}, false)
+	assert.NoError(t, err)
+
+	result, err := os.ReadFile(zshrcPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(result), `ZSH_THEME="powerlevel10k"`)
+	assert.Contains(t, string(result), `plugins=(git docker)`)
+	assert.Contains(t, string(result), `source $ZSH/oh-my-zsh.sh`)
+}
+
+func TestRestoreFromSnapshot_EmptyThemeAndPlugins(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	zshrcPath := filepath.Join(home, ".zshrc")
+	content := `export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME="robbyrussell"
+plugins=(git)
+source $ZSH/oh-my-zsh.sh
+`
+	require.NoError(t, os.WriteFile(zshrcPath, []byte(content), 0644))
+
+	omzDir := filepath.Join(home, ".oh-my-zsh")
+	require.NoError(t, os.MkdirAll(omzDir, 0755))
+
+	err := RestoreFromSnapshot(true, "", nil, false)
+	assert.NoError(t, err)
+
+	result, err := os.ReadFile(zshrcPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(result), `ZSH_THEME="robbyrussell"`)
+	assert.Contains(t, string(result), `plugins=(git)`)
+}
