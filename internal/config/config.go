@@ -20,6 +20,9 @@ var remoteHTTPClient = &http.Client{
 //go:embed data/presets.yaml
 var presetsYAML embed.FS
 
+//go:embed data/screen-recording-packages.yaml
+var screenRecordingYAML embed.FS
+
 type Config struct {
 	Version      string
 	Preset       string
@@ -149,4 +152,22 @@ func FetchRemoteConfig(userSlug string, token string) (*RemoteConfig, error) {
 	}
 
 	return &rc, nil
+}
+
+type screenRecordingData struct {
+	Packages []string `yaml:"packages"`
+}
+
+func GetScreenRecordingPackages() []string {
+	data, err := screenRecordingYAML.ReadFile("data/screen-recording-packages.yaml")
+	if err != nil {
+		return []string{}
+	}
+
+	var srd screenRecordingData
+	if err := yaml.Unmarshal(data, &srd); err != nil {
+		return []string{}
+	}
+
+	return srd.Packages
 }

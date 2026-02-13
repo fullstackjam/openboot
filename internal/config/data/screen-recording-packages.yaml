@@ -1,0 +1,11 @@
+# Packages whose core function requires macOS Screen Recording permission.
+# Used to trigger a post-install reminder for users.
+# Only includes apps where screen sharing/recording is a primary use case.
+# Deliberately excluded: browsers, chat apps, design tools.
+packages:
+  - zoom
+  - microsoft-teams
+  - obs
+  - loom
+  - feishu
+  - lark

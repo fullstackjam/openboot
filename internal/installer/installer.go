@@ -10,7 +10,9 @@ import (
 	"github.com/openbootdotdev/openboot/internal/dotfiles"
 	"github.com/openbootdotdev/openboot/internal/macos"
 	"github.com/openbootdotdev/openboot/internal/npm"
+	"github.com/openbootdotdev/openboot/internal/permissions"
 	"github.com/openbootdotdev/openboot/internal/shell"
+	"github.com/openbootdotdev/openboot/internal/state"
 	"github.com/openbootdotdev/openboot/internal/system"
 	"github.com/openbootdotdev/openboot/internal/ui"
 )
@@ -670,6 +672,8 @@ func showCompletion(cfg *config.Config) {
 	}
 	fmt.Println()
 
+	showScreenRecordingReminder(cfg)
+
 	ui.Info("Next steps:")
 	ui.Info("  - Restart your terminal to apply changes")
 	ui.Info("  - Run 'brew doctor' to verify Homebrew health")
@@ -808,4 +812,83 @@ func categorizeSelectedPackages(cfg *config.Config) categorizedPackages {
 		}
 	}
 	return result
+}
+
+func findMatchingPackages(cfg *config.Config, triggerPkgs []string) []string {
+	triggerSet := make(map[string]bool, len(triggerPkgs))
+	for _, p := range triggerPkgs {
+		triggerSet[p] = true
+	}
+
+	var matched []string
+	for pkg := range cfg.SelectedPkgs {
+		if triggerSet[pkg] {
+			matched = append(matched, pkg)
+		}
+	}
+	for _, pkg := range cfg.OnlinePkgs {
+		if triggerSet[pkg.Name] {
+			matched = append(matched, pkg.Name)
+		}
+	}
+	return matched
+}
+
+func showScreenRecordingReminder(cfg *config.Config) {
+	if cfg.DryRun || cfg.Silent {
+		return
+	}
+
+	statePath := state.DefaultStatePath()
+	reminderState, err := state.LoadState(statePath)
+	if err != nil {
+		return
+	}
+
+	if !state.ShouldShowReminder(reminderState) {
+		return
+	}
+
+	if permissions.HasScreenRecordingPermission() {
+		return
+	}
+
+	triggerPkgs := config.GetScreenRecordingPackages()
+	matchingPkgs := findMatchingPackages(cfg, triggerPkgs)
+	if len(matchingPkgs) == 0 {
+		return
+	}
+
+	fmt.Println()
+	ui.Header("Screen Recording Permission")
+	fmt.Println()
+	ui.Info(fmt.Sprintf("You installed: %s", strings.Join(matchingPkgs, ", ")))
+	ui.Info("These apps need Screen Recording permission for screen sharing.")
+	fmt.Println()
+
+	choice, err := ui.SelectOption("What would you like to do?", []string{
+		"Open System Settings",
+		"Remind me next time",
+		"Don't remind again",
+	})
+	if err != nil {
+		state.MarkSkipped(reminderState)
+		_ = state.SaveState(statePath, reminderState)
+		return
+	}
+
+	switch choice {
+	case "Open System Settings":
+		if err := permissions.OpenScreenRecordingSettings(); err != nil {
+			ui.Warn("Could not open System Settings")
+		}
+		state.MarkSkipped(reminderState)
+	case "Remind me next time":
+		state.MarkSkipped(reminderState)
+	case "Don't remind again":
+		state.MarkDismissed(reminderState)
+	}
+
+	_ = state.SaveState(statePath, reminderState)
+	fmt.Println()
 }
