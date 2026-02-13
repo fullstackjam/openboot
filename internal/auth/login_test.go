@@ -22,6 +22,13 @@ func withFastPoll(t *testing.T) {
 	t.Cleanup(func() { pollInterval = origInterval })
 }
 
+func withNoBrowser(t *testing.T) {
+	t.Helper()
+	orig := openBrowserFunc
+	openBrowserFunc = func(url string) error { return nil }
+	t.Cleanup(func() { openBrowserFunc = orig })
+}
+
 func TestStartAuthSession_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
@@ -300,6 +307,7 @@ func TestPollOnce_InvalidJSON(t *testing.T) {
 
 func TestLoginInteractive_SuccessRFC3339(t *testing.T) {
 	withFastPoll(t)
+	withNoBrowser(t)
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 
@@ -340,6 +348,7 @@ func TestLoginInteractive_SuccessRFC3339(t *testing.T) {
 
 func TestLoginInteractive_SuccessSQLiteFormat(t *testing.T) {
 	withFastPoll(t)
+	withNoBrowser(t)
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 
@@ -369,6 +378,7 @@ func TestLoginInteractive_SuccessSQLiteFormat(t *testing.T) {
 }
 
 func TestLoginInteractive_StartAuthSessionError(t *testing.T) {
+	withNoBrowser(t)
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 
@@ -385,6 +395,7 @@ func TestLoginInteractive_StartAuthSessionError(t *testing.T) {
 
 func TestLoginInteractive_PollForApprovalError(t *testing.T) {
 	withFastPoll(t)
+	withNoBrowser(t)
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 
@@ -409,6 +420,7 @@ func TestLoginInteractive_PollForApprovalError(t *testing.T) {
 
 func TestLoginInteractive_InvalidExpirationFormat(t *testing.T) {
 	withFastPoll(t)
+	withNoBrowser(t)
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 
@@ -438,6 +450,7 @@ func TestLoginInteractive_InvalidExpirationFormat(t *testing.T) {
 
 func TestLoginInteractive_SaveTokenError(t *testing.T) {
 	withFastPoll(t)
+	withNoBrowser(t)
 	tmpDir := t.TempDir()
 	authDir := filepath.Join(tmpDir, ".openboot")
 	require.NoError(t, os.MkdirAll(authDir, 0500))
@@ -473,6 +486,7 @@ func TestLoginInteractive_SaveTokenError(t *testing.T) {
 
 func TestLoginInteractive_CreatedAtTimestamp(t *testing.T) {
 	withFastPoll(t)
+	withNoBrowser(t)
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 
@@ -506,6 +520,7 @@ func TestLoginInteractive_CreatedAtTimestamp(t *testing.T) {
 
 func TestLoginInteractive_TokenPersisted(t *testing.T) {
 	withFastPoll(t)
+	withNoBrowser(t)
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 
@@ -551,6 +566,7 @@ func TestGetAPIBase_EnvOverride(t *testing.T) {
 
 func TestLoginInteractive_MultiplePolls(t *testing.T) {
 	withFastPoll(t)
+	withNoBrowser(t)
 
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
@@ -626,6 +642,7 @@ func TestPollForApproval_QueryParameter(t *testing.T) {
 
 func TestLoginInteractive_ExpiresAtParsing(t *testing.T) {
 	withFastPoll(t)
+	withNoBrowser(t)
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 
@@ -686,6 +703,7 @@ func TestPollOnce_UnknownStatus(t *testing.T) {
 
 func TestLoginInteractive_EmptyUsername(t *testing.T) {
 	withFastPoll(t)
+	withNoBrowser(t)
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 
