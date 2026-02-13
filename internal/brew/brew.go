@@ -566,6 +566,66 @@ func installSmartCask(pkg string) error {
 	return nil
 }
 
+func Uninstall(packages []string, dryRun bool) error {
+	if len(packages) == 0 {
+		return nil
+	}
+
+	if dryRun {
+		ui.Info("Would uninstall CLI packages:")
+		for _, p := range packages {
+			fmt.Printf("    brew uninstall %s\n", p)
+		}
+		return nil
+	}
+
+	var failed []string
+	for _, pkg := range packages {
+		cmd := exec.Command("brew", "uninstall", pkg)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			ui.Warn(fmt.Sprintf("Failed to uninstall %s: %s", pkg, strings.TrimSpace(string(output))))
+			failed = append(failed, pkg)
+		} else {
+			ui.Success(fmt.Sprintf("  ✔ Uninstalled %s", pkg))
+		}
+	}
+
+	if len(failed) > 0 {
+		return fmt.Errorf("%d formulae failed to uninstall", len(failed))
+	}
+	return nil
+}
+
+func UninstallCask(packages []string, dryRun bool) error {
+	if len(packages) == 0 {
+		return nil
+	}
+
+	if dryRun {
+		ui.Info("Would uninstall GUI applications:")
+		for _, p := range packages {
+			fmt.Printf("    brew uninstall --cask %s\n", p)
+		}
+		return nil
+	}
+
+	var failed []string
+	for _, pkg := range packages {
+		cmd := exec.Command("brew", "uninstall", "--cask", pkg)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			ui.Warn(fmt.Sprintf("Failed to uninstall %s: %s", pkg, strings.TrimSpace(string(output))))
+			failed = append(failed, pkg)
+		} else {
+			ui.Success(fmt.Sprintf("  ✔ Uninstalled %s (cask)", pkg))
+		}
+	}
+
+	if len(failed) > 0 {
+		return fmt.Errorf("%d casks failed to uninstall", len(failed))
+	}
+	return nil
+}
+
 func Update(dryRun bool) error {
 	if dryRun {
 		ui.Info("Would run: brew update && brew upgrade")

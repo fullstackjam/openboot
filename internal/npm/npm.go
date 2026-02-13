@@ -192,6 +192,41 @@ func Install(packages []string, dryRun bool) error {
 	return nil
 }
 
+func Uninstall(packages []string, dryRun bool) error {
+	if len(packages) == 0 {
+		return nil
+	}
+
+	if !IsAvailable() {
+		ui.Warn("npm not found — skipping npm package removal")
+		return nil
+	}
+
+	if dryRun {
+		ui.Info("Would uninstall npm packages:")
+		for _, p := range packages {
+			fmt.Printf("    npm uninstall -g %s\n", p)
+		}
+		return nil
+	}
+
+	var failed []string
+	for _, pkg := range packages {
+		cmd := exec.Command("npm", "uninstall", "-g", pkg)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			ui.Warn(fmt.Sprintf("Failed to uninstall %s: %s", pkg, strings.TrimSpace(string(output))))
+			failed = append(failed, pkg)
+		} else {
+			ui.Success(fmt.Sprintf("  ✔ Uninstalled %s", pkg))
+		}
+	}
+
+	if len(failed) > 0 {
+		return fmt.Errorf("%d npm packages failed to uninstall", len(failed))
+	}
+	return nil
+}
+
 func installNpmPackageWithRetry(pkg string) string {
 	maxAttempts := 3
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
