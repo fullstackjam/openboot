@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/openbootdotdev/openboot/internal/system"
 )
 
 func IsOhMyZshInstalled() bool {
@@ -36,9 +38,9 @@ func InstallOhMyZsh(dryRun bool) error {
 		return err
 	}
 
-	home, err := os.UserHomeDir()
+	home, err := system.HomeDir()
 	if err != nil {
-		return fmt.Errorf("cannot determine home directory: %w", err)
+		return err
 	}
 	zshrcPath := filepath.Join(home, ".zshrc")
 	os.Remove(zshrcPath)
@@ -47,9 +49,9 @@ func InstallOhMyZsh(dryRun bool) error {
 }
 
 func ConfigureZshrc(dryRun bool) error {
-	home, err := os.UserHomeDir()
+	home, err := system.HomeDir()
 	if err != nil {
-		return fmt.Errorf("cannot determine home directory: %w", err)
+		return err
 	}
 	zshrcPath := filepath.Join(home, ".zshrc")
 
@@ -135,9 +137,9 @@ func RestoreFromSnapshot(ohMyZsh bool, theme string, plugins []string, dryRun bo
 		}
 	}
 
-	home, err := os.UserHomeDir()
+	home, err := system.HomeDir()
 	if err != nil {
-		return fmt.Errorf("cannot determine home directory: %w", err)
+		return err
 	}
 	zshrcPath := filepath.Join(home, ".zshrc")
 

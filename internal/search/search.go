@@ -65,9 +65,6 @@ func queryAPI(endpoint, query string) ([]config.Package, error) {
 	return pkgs, nil
 }
 
-// SearchOnline queries Homebrew and npm via the openboot.dev proxy API.
-// The proxy caches Homebrew's full catalog at Cloudflare's edge and filters
-// server-side, returning lightweight responses (~1-3KB, <2s).
 func SearchOnline(query string) ([]config.Package, error) {
 	if query == "" {
 		return nil, nil

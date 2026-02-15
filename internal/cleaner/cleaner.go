@@ -9,7 +9,6 @@ import (
 	"github.com/openbootdotdev/openboot/internal/ui"
 )
 
-// CleanResult holds the diff between current system and desired state.
 type CleanResult struct {
 	ExtraFormulae []string
 	ExtraCasks    []string
@@ -35,27 +34,23 @@ func DiffFromLists(formulae, casks, npmPkgs []string) (*CleanResult, error) {
 func diff(desiredFormulae, desiredCasks, desiredNpm map[string]bool) (*CleanResult, error) {
 	result := &CleanResult{}
 
-	// Get currently installed brew packages
 	installedFormulae, installedCasks, err := brew.GetInstalledPackages()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get installed brew packages: %w", err)
 	}
 
-	// Find extra formulae
 	for pkg := range installedFormulae {
 		if !desiredFormulae[pkg] {
 			result.ExtraFormulae = append(result.ExtraFormulae, pkg)
 		}
 	}
 
-	// Find extra casks
 	for pkg := range installedCasks {
 		if !desiredCasks[pkg] {
 			result.ExtraCasks = append(result.ExtraCasks, pkg)
 		}
 	}
 
-	// Find extra npm packages
 	if npm.IsAvailable() {
 		installedNpm, err := npm.GetInstalledPackages()
 		if err != nil {
@@ -72,34 +67,40 @@ func diff(desiredFormulae, desiredCasks, desiredNpm map[string]bool) (*CleanResu
 	return result, nil
 }
 
-// Execute removes the extra packages identified in a CleanResult.
 func Execute(result *CleanResult, dryRun bool) error {
+	type uninstallOp struct {
+		label     string
+		pkgs      []string
+		uninstall func([]string, bool) error
+	}
+
+	ops := []uninstallOp{
+		{
+			label:     "Removing extra formulae",
+			pkgs:      result.ExtraFormulae,
+			uninstall: brew.Uninstall,
+		},
+		{
+			label:     "Removing extra casks",
+			pkgs:      result.ExtraCasks,
+			uninstall: brew.UninstallCask,
+		},
+		{
+			label:     "Removing extra npm packages",
+			pkgs:      result.ExtraNpm,
+			uninstall: npm.Uninstall,
+		},
+	}
+
 	var errs []error
-
-	if len(result.ExtraFormulae) > 0 {
-		fmt.Println()
-		ui.Header("Removing extra formulae")
-		fmt.Println()
-		if err := brew.Uninstall(result.ExtraFormulae, dryRun); err != nil {
-			errs = append(errs, fmt.Errorf("formulae cleanup: %w", err))
-		}
-	}
-
-	if len(result.ExtraCasks) > 0 {
-		fmt.Println()
-		ui.Header("Removing extra casks")
-		fmt.Println()
-		if err := brew.UninstallCask(result.ExtraCasks, dryRun); err != nil {
-			errs = append(errs, fmt.Errorf("cask cleanup: %w", err))
-		}
-	}
-
-	if len(result.ExtraNpm) > 0 {
-		fmt.Println()
-		ui.Header("Removing extra npm packages")
-		fmt.Println()
-		if err := npm.Uninstall(result.ExtraNpm, dryRun); err != nil {
-			errs = append(errs, fmt.Errorf("npm cleanup: %w", err))
+	for _, op := range ops {
+		if len(op.pkgs) > 0 {
+			fmt.Println()
+			ui.Header(op.label)
+			fmt.Println()
+			if err := op.uninstall(op.pkgs, dryRun); err != nil {
+				errs = append(errs, fmt.Errorf("%s: %w", op.label, err))
+			}
 		}
 	}
 

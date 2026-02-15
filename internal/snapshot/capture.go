@@ -204,47 +204,32 @@ func isBrewInstalled() bool {
 	return err == nil
 }
 
-// CaptureFormulae returns user-installed formulae (via `brew leaves`, excludes dependencies).
-func CaptureFormulae() ([]string, error) {
+// captureBrewList runs a brew command and returns parsed output lines.
+func captureBrewList(args ...string) ([]string, error) {
 	if !isBrewInstalled() {
 		return []string{}, nil
 	}
 
-	cmd := exec.Command("brew", "leaves")
+	cmd := exec.Command("brew", args...)
 	output, err := cmd.Output()
 	if err != nil {
 		return []string{}, nil
 	}
 
 	return parseLines(string(output)), nil
+}
+
+// CaptureFormulae returns user-installed formulae (via `brew leaves`, excludes dependencies).
+func CaptureFormulae() ([]string, error) {
+	return captureBrewList("leaves")
 }
 
 func CaptureCasks() ([]string, error) {
-	if !isBrewInstalled() {
-		return []string{}, nil
-	}
-
-	cmd := exec.Command("brew", "list", "--cask")
-	output, err := cmd.Output()
-	if err != nil {
-		return []string{}, nil
-	}
-
-	return parseLines(string(output)), nil
+	return captureBrewList("list", "--cask")
 }
 
 func CaptureTaps() ([]string, error) {
-	if !isBrewInstalled() {
-		return []string{}, nil
-	}
-
-	cmd := exec.Command("brew", "tap")
-	output, err := cmd.Output()
-	if err != nil {
-		return []string{}, nil
-	}
-
-	return parseLines(string(output)), nil
+	return captureBrewList("tap")
 }
 
 func CaptureMacOSPrefs() ([]MacOSPref, error) {

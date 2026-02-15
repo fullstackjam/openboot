@@ -74,10 +74,8 @@ func runClean(cmd *cobra.Command) error {
 		return nil
 	}
 
-	// Show what would be removed
 	showCleanPreview(result)
 
-	// Confirm unless dry-run
 	if !dryRun {
 		proceed, err := ui.Confirm(fmt.Sprintf("Remove %d packages?", result.TotalExtra()), false)
 		if err != nil {

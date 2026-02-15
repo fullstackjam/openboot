@@ -79,7 +79,6 @@ func isHomebrewPath(binPath string) bool {
 		strings.HasPrefix(binPath, "/home/linuxbrew/")
 }
 
-// IsHomebrewInstall reports whether the running binary was installed via Homebrew.
 func IsHomebrewInstall() bool {
 	exe, err := os.Executable()
 	if err != nil {

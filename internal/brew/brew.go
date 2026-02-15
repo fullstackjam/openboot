@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/openbootdotdev/openboot/internal/system"
 	"github.com/openbootdotdev/openboot/internal/ui"
 )
 
@@ -665,9 +666,9 @@ func CheckNetwork() error {
 
 func CheckDiskSpace() (float64, error) {
 	var stat syscall.Statfs_t
-	home, err := os.UserHomeDir()
+	home, err := system.HomeDir()
 	if err != nil {
-		return 0, fmt.Errorf("cannot determine home directory: %w", err)
+		return 0, err
 	}
 	if err := syscall.Statfs(home, &stat); err != nil {
 		return 0, err

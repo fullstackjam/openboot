@@ -11,27 +11,23 @@ import (
 	"github.com/openbootdotdev/openboot/internal/snapshot"
 )
 
-// editorItem represents a single toggleable item in the snapshot editor.
 type editorItem struct {
 	name        string
 	description string
 	selected    bool
 }
 
-// editorTab represents a tab in the snapshot editor.
 type editorTab struct {
 	name  string
 	icon  string
 	items []editorItem
 }
 
-// editorFilteredRef maps a filtered search result back to its source tab and item.
 type editorFilteredRef struct {
 	tabIdx  int
 	itemIdx int
 }
 
-// SnapshotEditorModel is a Bubbletea model for reviewing and editing a captured snapshot.
 type SnapshotEditorModel struct {
 	tabs          []editorTab
 	activeTab     int
@@ -47,7 +43,6 @@ type SnapshotEditorModel struct {
 	snapshot      *snapshot.Snapshot
 }
 
-// NewSnapshotEditor creates a new SnapshotEditorModel from a captured snapshot.
 func NewSnapshotEditor(snap *snapshot.Snapshot) SnapshotEditorModel {
 	tabs := make([]editorTab, 3)
 
@@ -481,7 +476,6 @@ func RunSnapshotEditor(snap *snapshot.Snapshot) (*snapshot.Snapshot, bool, error
 	return edited, true, nil
 }
 
-// buildEditedSnapshot creates a new snapshot with deselected items removed.
 func buildEditedSnapshot(original *snapshot.Snapshot, m *SnapshotEditorModel) *snapshot.Snapshot {
 	edited := &snapshot.Snapshot{
 		Version:       original.Version,

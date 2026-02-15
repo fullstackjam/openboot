@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 )
 
-// ReminderState represents the persisted state for screen recording permission reminder.
 type ReminderState struct {
 	Dismissed bool `json:"dismissed"`
 	Skipped   bool `json:"skipped"`

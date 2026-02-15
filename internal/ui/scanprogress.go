@@ -37,7 +37,6 @@ type stepState struct {
 	elapsed time.Duration
 }
 
-// ScanProgress is a stderr-based multi-line progress renderer for snapshot scanning.
 type ScanProgress struct {
 	steps          []stepState
 	totalSteps     int
@@ -51,7 +50,6 @@ type ScanProgress struct {
 	completedCount int
 }
 
-// NewScanProgress creates a ScanProgress with an optional TTY spinner goroutine.
 func NewScanProgress(totalSteps int) *ScanProgress {
 	steps := make([]stepState, totalSteps)
 	for i := range steps {
@@ -100,7 +98,6 @@ func NewScanProgress(totalSteps int) *ScanProgress {
 	return sp
 }
 
-// Update applies a ScanStep to the display.
 func (sp *ScanProgress) Update(step snapshot.ScanStep) {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
@@ -109,12 +106,10 @@ func (sp *ScanProgress) Update(step snapshot.ScanStep) {
 		return
 	}
 
-	// Track when scanning starts
 	if step.Status == "scanning" && sp.steps[step.Index].status != "scanning" {
 		sp.stepStartTimes[step.Index] = time.Now()
 	}
 
-	// Track when step completes
 	if (step.Status == "done" || step.Status == "error") && sp.steps[step.Index].status == "scanning" {
 		sp.steps[step.Index].elapsed = time.Since(sp.stepStartTimes[step.Index])
 		sp.completedCount++
@@ -127,7 +122,6 @@ func (sp *ScanProgress) Update(step snapshot.ScanStep) {
 	sp.render()
 }
 
-// Finish stops the spinner and renders the final state.
 func (sp *ScanProgress) Finish() {
 	close(sp.spinnerStop)
 

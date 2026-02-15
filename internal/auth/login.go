@@ -179,8 +179,6 @@ func pollOnce(pollURL string) (*cliPollResponse, bool, error) {
 	return nil, false, nil
 }
 
-// openBrowserFunc is the function used to open URLs in the browser.
-// It is a variable so tests can replace it with a no-op.
 var openBrowserFunc = func(url string) error {
 	return exec.Command("open", url).Start()
 }

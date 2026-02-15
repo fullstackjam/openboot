@@ -44,7 +44,6 @@ shell configuration, and macOS preferences.`,
 			}
 		}
 
-		// Read OPENBOOT_PRESET env var (works in both interactive and silent modes)
 		if preset := os.Getenv("OPENBOOT_PRESET"); preset != "" && cfg.Preset == "" {
 			cfg.Preset = preset
 		}

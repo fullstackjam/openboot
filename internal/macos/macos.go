@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/openbootdotdev/openboot/internal/system"
 )
 
 type Preference struct {
@@ -92,9 +94,9 @@ func Configure(prefs []Preference, dryRun bool) error {
 }
 
 func CreateScreenshotsDir(dryRun bool) error {
-	home, err := os.UserHomeDir()
+	home, err := system.HomeDir()
 	if err != nil {
-		return fmt.Errorf("cannot determine home directory: %w", err)
+		return err
 	}
 	dir := filepath.Join(home, "Screenshots")
 

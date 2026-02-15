@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/openbootdotdev/openboot/internal/system"
 )
 
 const defaultDotfilesDir = ".dotfiles"
@@ -15,9 +17,9 @@ func Clone(repoURL string, dryRun bool) error {
 		return nil
 	}
 
-	home, err := os.UserHomeDir()
+	home, err := system.HomeDir()
 	if err != nil {
-		return fmt.Errorf("cannot determine home directory: %w", err)
+		return err
 	}
 	dotfilesPath := filepath.Join(home, defaultDotfilesDir)
 
@@ -38,9 +40,9 @@ func Clone(repoURL string, dryRun bool) error {
 }
 
 func Link(dryRun bool) error {
-	home, err := os.UserHomeDir()
+	home, err := system.HomeDir()
 	if err != nil {
-		return fmt.Errorf("cannot determine home directory: %w", err)
+		return err
 	}
 	dotfilesPath := filepath.Join(home, defaultDotfilesDir)
 
@@ -81,9 +83,9 @@ func linkWithStow(dotfilesPath string, dryRun bool) error {
 		return err
 	}
 
-	home, err := os.UserHomeDir()
+	home, err := system.HomeDir()
 	if err != nil {
-		return fmt.Errorf("cannot determine home directory: %w", err)
+		return err
 	}
 
 	for _, entry := range entries {
@@ -117,9 +119,9 @@ func linkWithStow(dotfilesPath string, dryRun bool) error {
 }
 
 func linkDirect(dotfilesPath string, dryRun bool) error {
-	home, err := os.UserHomeDir()
+	home, err := system.HomeDir()
 	if err != nil {
-		return fmt.Errorf("cannot determine home directory: %w", err)
+		return err
 	}
 
 	entries, err := os.ReadDir(dotfilesPath)
